@@ -1,0 +1,10 @@
+Package: com.csmk.mks
+Name: mks
+Version: 1
+Depends: sudo, mobilesubstrate
+Architecture: iphoneos-arm
+Description: An awesome tool of some sort!!
+Maintainer: ww
+Author: ww
+Section: System
+Tag: role::hacker

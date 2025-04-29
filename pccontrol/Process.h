@@ -1,0 +1,11 @@
+#ifndef PROCESS_H
+#define PROCESS_H
+#import <UIKit/UIKit.h>
+
+#include <dlfcn.h>
+
+int switchProcessForegroundFromRawData(UInt8 *eventData);
+int bringAppForeground(NSString *appIdentifier);
+id getFrontMostApplication();
+
+#endif
