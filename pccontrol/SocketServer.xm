@@ -12,7 +12,6 @@ CFReadStreamRef readStreamRef = NULL;
 static NSMutableDictionary *socketClients = NULL;
 void report_memory(void);
 
-// Reference: https://www.jianshu.com/p/9353105a9129
 
 void socketServer()
 {

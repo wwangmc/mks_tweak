@@ -2,7 +2,7 @@
 #include "Common.h"
 int (*openApp)(CFStringRef, Boolean);
 
-static void* sbServices = dlopen("/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices", RTLD_LAZY);
+static void* sbServices = dlopen("/var/jb/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices", RTLD_LAZY);
 
 int switchProcessForegroundFromRawData(UInt8 *eventData)
 {
