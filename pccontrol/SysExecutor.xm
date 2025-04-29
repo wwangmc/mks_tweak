@@ -19,8 +19,8 @@ void sysExecute(NSString * command)
     posix_spawn_file_actions_addclose(&actions, pipefd[0]);
 
     // 分割命令
-    const char *argv[] = {"/bin/sh", "-c", [command UTF8String], NULL};
-    int status = posix_spawn(&pid, "/bin/sh", &actions, NULL, (char *const *)argv, NULL);
+    const char *argv[] = {"/var/jb/bin/sh", "-c", [command UTF8String], NULL};
+    int status = posix_spawn(&pid, "/var/jb/bin/sh", &actions, NULL, (char *const *)argv, NULL);
     close(pipefd[1]);
 
     // 读取命令输出
@@ -76,8 +76,8 @@ NSString *runCommand(NSString *command) {
     posix_spawn_file_actions_addclose(&actions, pipefd[0]);
 
     // 分割命令
-    const char *argv[] = {"/bin/sh", "-c", [command UTF8String], NULL};
-    int status = posix_spawn(&pid, "/bin/sh", &actions, NULL, (char *const *)argv, NULL);
+    const char *argv[] = {"/var/jb/bin/sh", "-c", [command UTF8String], NULL};
+    int status = posix_spawn(&pid, "/var/jb/bin/sh", &actions, NULL, (char *const *)argv, NULL);
     close(pipefd[1]);
 
     // 读取命令输出

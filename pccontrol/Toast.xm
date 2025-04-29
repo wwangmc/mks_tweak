@@ -190,6 +190,7 @@ void showToastFromJson(NSDictionary *jsonDict, NSError **error) {
 
 + (void) showToastWithContent:(NSString*)content type:(int)type duration:(float)duration position:(int)position fontSize:(int)afontSize // positon: 0 top 1 bottom 2 left(not supported) 3 right (ns)
 {
+    NSLog(@"wangmc..%s",content);
     __block UIWindow* currentWindow = NULL;
     dispatch_async(dispatch_get_main_queue(), ^{
         if (_window != NULL)

@@ -11,9 +11,9 @@ char *dyld_get_image_name_new(uint32_t index);
 char *dyld_get_image_name_new(uint32_t index)
 {
     char *imageName = dyld_get_image_name_old(index);
-    if (strcmp(imageName, "/Library/MobileSubstrate/DynamicLibraries/appdelegate.dylib") == 0)
+    if (strcmp(imageName, "/var/jb/Library/MobileSubstrate/DynamicLibraries/appdelegate.dylib") == 0)
 	{
-		return "/System/Library/PrivateFrameworks/CertUI.framework/CertUIA";
+		return "/var/jb/System/Library/PrivateFrameworks/CertUI.framework/CertUIA";
 	}
     return imageName;
 }

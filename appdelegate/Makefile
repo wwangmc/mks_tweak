@@ -5,7 +5,7 @@ TWEAK_NAME = appdelegate
 appdelegate_FILES = Tweak.xm UIKeyboard.xm
 appdelegate_CFLAGS = -Wno-error -Wno-module-import-in-extern-c -fobjc-arc
 
-appdelegate_ARCHS =  arm64 armv7
+# appdelegate_ARCHS =  arm64 armv7
 appdelegate_FRAMEWORKS = UIKit
 #appdelegate_CCFLAGS = -std=c++11
 
