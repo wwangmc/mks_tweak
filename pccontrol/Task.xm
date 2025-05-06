@@ -5,7 +5,6 @@
 #include "SocketServer.h"
 #include "Toast.h"
 #include "DeviceInfo.h"
-#include "TouchIndicator/TouchIndicatorWindow.h"
 #import <mach/mach.h>
 #include <Foundation/NSDistributedNotificationCenter.h>
 #include "Screen.h"
@@ -159,21 +158,7 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
             }
         }
     }
-    else if (taskType == TASK_TOUCH_INDICATOR)
-    {
-        @autoreleasepool {
-            NSError *err = nil;
-            handleTouchIndicatorTaskWithRawData(eventData, &err);
-            if (err)
-            {
-                notifyClient((UInt8*)[[err localizedDescription] UTF8String], writeStreamRef);
-            }
-            else
-            {
-                notifyClient((UInt8*)"0\r\n", writeStreamRef);
-            }
-        }
-    }else if(taskType == TASK_HOME){
+    else if(taskType == TASK_HOME){
         sendGETRequest(@"http://localhost:50005/event?type=20&state=0&text=");
     }else if(taskType == TASK_SWITCH){
         sendGETRequest(@"http://localhost:50005/event?type=21&state=0&text=");

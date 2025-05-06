@@ -24,125 +24,29 @@
 #include "headers/CFUserNotification.h"
 #import <os/lock.h>
 
-#include "Touch.h"
-#include "SocketServer.h"
-#include "Common.h"
-#include "Screen.h"
-#include "AlertBox.h"
-#include "Toast.h"
-#include "TouchIndicator/TouchIndicatorWindow.h"
+#import "Touch.h"
+#import "SocketServer.h"
+#import "Common.h"
+#import "Screen.h"
+#import "AlertBox.h"
+#import "Toast.h"
 #import "SysExecutor.h"
 
-
-#define DEBUG_MODE
-
-#ifdef DEBUG_MODE
-#define CHECKER true
-#else
-#define CHECKER !isExpired
-#endif
-
-#define IPHONE7P_HEIGHT 1920
-#define IPHONE7P_WIDTH 1080
-
-#define IPADPRO_HEIGHT 2732
-#define IPADPRO_WIDTH 2048
-
-#define SET_SIZE 9
 
 
 //static ActivatorListener *activatorInstance;
 
 
-int daemonSock = -1;
 
 
-typedef struct　eventInfo_s* eventInfo;
-typedef struct Node* llNodePtr;
-typedef struct eventData_s* eventDataPtr;
-
-
-const int TOUCH_EVENT_ARR_LEN = 20;
-
-Boolean isCrazyTapping = false;
-Boolean isRecording = false;
-
-
-
-const NSString *recordingScriptName = @"rec";
-
-
-eventInfo touchEventArr[TOUCH_EVENT_ARR_LEN] = {0};
-
-
-llNodePtr eventLinkedListHead = NULL;
-
-
-Boolean isInitializedSuccess = true;
-
-int getDaemonSocket();
 void *(*IOHIDEventAppendEventOld)(IOHIDEventRef parent, IOHIDEventRef child);
 
-
-float getRandomNumberFloat(float min, float max);
-
-int getTaskType(UInt8* dataArray);
-
-void handle_event (void* target, void* refcon, IOHIDServiceRef service, IOHIDEventRef event);
-
-
-
-
-void setSenderIdCallback(void* target, void* refcon, IOHIDServiceRef service, IOHIDEventRef event);
-
-static void stopCrazyTapCallback();
-void crazyTapTimeUpCallback();
-void stopCrazyTap();
-void processTask(UInt8 *buff);
 
 // -------------
 IOHIDEventSystemClientRef ioHIDEventSystemForPopupDectect = NULL;
 
 
-void stopCrazyTap()
-{
-    isCrazyTapping = false;
-}
 
-
-
-
-/*
-A callback to stop crazy tap.
-
-Note: using a callback to stop crazy tap is because the socket server may not respond while crazy tapping
-*/
-static void stopCrazyTapCallback()
-{
-    stopCrazyTap();
-}
-
-
-void crazyTapTimeUpCallback(int sig)
-{
-    NSLog(@"com.zjx.springboard: crazy tap stop.");
-    stopCrazyTap();
-}
-
-void dontPutThisFileIntoIda()
-{
-    return;
-}
-
-void becauseTheSourceCodeWillBeReleasedAtGithub()
-{
-    return;
-}
-
-void repoNameIsIOS13SimulateTouch()
-{
-    return;
-}
 
 /*
 Get the sender id and unregister itself.
@@ -194,7 +98,6 @@ void startPopupListeningCallBack()
 
         [Screen setScreenSize:(width<height?width:height) height:(width>height?width:height)];    
 
-        //CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)stopCrazyTapCallback, CFSTR("com.zjx.crazytap.stop"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         // popupWindow = [[PopupWindow alloc] init];
 
         initSenderId();
