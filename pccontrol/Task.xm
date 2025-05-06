@@ -4,7 +4,6 @@
 #include "AlertBox.h"
 #include "SocketServer.h"
 #include "Toast.h"
-#include "UIKeyboard.h"
 #include "DeviceInfo.h"
 #include "TouchIndicator/TouchIndicatorWindow.h"
 #import <mach/mach.h>
@@ -145,21 +144,6 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
             }
         }
     }
-    else if (taskType == TASK_TEXT_INPUT)
-    {
-        @autoreleasepool {
-            NSError *err = nil;
-            NSString *result = inputTextFromRawData(eventData,  &err);
-            if (err)
-            {
-                notifyClient((UInt8*)[[err localizedDescription] UTF8String], writeStreamRef);
-            }
-            else
-            {
-                notifyClient((UInt8*)[[NSString stringWithFormat:@"0;;%@\r\n", result] UTF8String], writeStreamRef);
-            }
-        }
-    }
     else if (taskType == TASK_GET_DEVICE_INFO)
     {
         @autoreleasepool {
@@ -200,8 +184,15 @@ void processHttpTask(HttpTask *task,CFWriteStreamRef writeStreamRef)
 {
     int code = 200;
     NSString * res = @"success";
-    if ([task.taskType isEqualToString:@"input"]) {
-        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(1), @"task_content": task.content} deliverImmediately: true];
+    if ([task.taskType isEqualToString:@"setClip"]) {
+        // 得先让剪切板里有内容才能用 比如先找个东西复制一下 下面的获取剪切板内容也是
+        UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
+        if (pasteboard.string){
+            pasteboard.string = task.content;
+        }else {
+            code = 500;
+            res = @"操作剪切板失败，请先随便找个东西复制一下";
+        }
     } else if([task.taskType isEqualToString:@"getClip"]){
         UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
         if (pasteboard.string){
