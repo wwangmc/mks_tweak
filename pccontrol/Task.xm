@@ -215,8 +215,6 @@ void processHttpTask(HttpTask *task,CFWriteStreamRef writeStreamRef)
             NSError *error = nil;
             showToastFromJson(task.jsonContent,&error);        
         }
-    }else if([task.taskType isEqualToString:@"deviceInfo"]){
-
     }else if([task.taskType isEqualToString:@"runShell"]){
         @autoreleasepool {
             res = runCommand(task.content);

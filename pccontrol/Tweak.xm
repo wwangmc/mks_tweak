@@ -205,7 +205,7 @@ void startPopupListeningCallBack()
 
 
         //system("sudo zxtouchb -e \"chown -R mobile:mobile /var/mobile/Documents/com.zjx.zxtouchsp\"");
-        sysExecute(@"sudo zxtouchb -e \"chown -R mobile:mobile /var/mobile/Library/ZXTouch\"");
+        //sysExecute(@"sudo zxtouchb -e \"chown -R mobile:mobile /var/mobile/Library/ZXTouch\"");
 
         socketServer();
     });

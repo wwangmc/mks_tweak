@@ -1,6 +1,5 @@
 THEOS_DEVICE_IP=localhost
 THEOS_DEVICE_PORT=2222
-THEOS_DEVICE_PASSWORD=q
 ROOTLESS = 1
 ifeq ($(ROOTLESS),1)
  THEOS_PACKAGE_SCHEME=rootless
@@ -15,7 +14,5 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 include $(THEOS)/makefiles/common.mk
 
 
-SUBPROJECTS += appdelegate
 SUBPROJECTS += pccontrol
-# SUBPROJECTS += ModernUI
 include $(THEOS_MAKE_PATH)/aggregate.mk

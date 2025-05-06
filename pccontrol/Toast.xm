@@ -188,108 +188,76 @@ void showToastFromJson(NSDictionary *jsonDict, NSError **error) {
     });
 }
 
-+ (void) showToastWithContent:(NSString*)content type:(int)type duration:(float)duration position:(int)position fontSize:(int)afontSize // positon: 0 top 1 bottom 2 left(not supported) 3 right (ns)
++ (void) showToastWithContent:(NSString*)content type:(int)type duration:(float)duration position:(int)position fontSize:(int)afontSize
 {
-    NSLog(@"wangmc..%s",content);
-    __block UIWindow* currentWindow = NULL;
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (_window != NULL)
-        {
+        // 1. 清理旧窗口
+        if (_window) {
             _window.hidden = YES;
             _window = nil;
         }
-        CGFloat screenWidth = [Screen getScreenWidth];
-        CGFloat screenHeight = [Screen getScreenHeight];
-
-        CGFloat scale = [Screen getScale];
         
-        int fontSize = 15;
-        if (afontSize != 0)
-        {
-            fontSize = afontSize;
-        }
-        else
-        {
-            fontSize = (int)(0.015*screenWidth);
-            if (fontSize <= 15)
-            {
-                fontSize = 15;
+        // 2. 获取屏幕尺寸
+        CGRect screenBounds = [UIScreen mainScreen].bounds;
+        CGFloat screenWidth = screenBounds.size.width;
+        CGFloat screenHeight = screenBounds.size.height;
+        
+        // 3. 计算字体大小
+        int fontSize = afontSize ?: MAX(15, MIN((int)(0.015 * screenWidth), 30));
+        
+        // 4. 获取活跃窗口场景（iOS 16+关键修改）
+        UIWindowScene *activeScene = nil;
+        if (@available(iOS 13.0, *)) {
+            for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+                if (scene.activationState == UISceneActivationStateForegroundActive) {
+                    activeScene = (UIWindowScene *)scene;
+                    break;
+                }
             }
-            else if (fontSize >= 30)
-            {
-                fontSize = 30;
-            }
         }
-
-        UIFont * font = [UIFont systemFontOfSize:fontSize weight:UIFontWeightLight];
-        CGSize contentSize = [content sizeWithFont:font];
-
+        
+        // 5. 计算文本尺寸（使用现代API）
+        UIFont *font = [UIFont systemFontOfSize:fontSize weight:UIFontWeightLight];
+        CGSize contentSize = [content sizeWithAttributes:@{NSFontAttributeName: font}];
+        
+        // 6. 计算窗口尺寸和位置
         windowWidth = contentSize.width + 40;
-        windowHeight = contentSize.height;
-        //windowHeight = (int)((screenHeight/scale)/4);
-
-        int windowLeftTopCornerX = (int)((screenWidth/scale)/2 - windowWidth/2);
-        int windowLeftTopCornerY = 30;
-
-        if (position == 0)
-        {
-            windowLeftTopCornerY = 30;
-        }
-        else if (position == 1)
-        {
-            windowLeftTopCornerY = (int)((screenHeight - contentSize.height - 50)/scale);
-        }
-
-        if (@available(iOS 11.0, *)) {
-            UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
-            CGFloat topPadding = window.safeAreaInsets.top;
-            CGFloat bottomPadding = window.safeAreaInsets.bottom;
-
-            windowLeftTopCornerY = bottomPadding + windowLeftTopCornerY;
-        }
-
-
-
+        windowHeight = contentSize.height + 20;
         
-        _window = [[UIWindow alloc] initWithFrame:CGRectMake(windowLeftTopCornerX, windowLeftTopCornerY, windowWidth, windowHeight)];
-        currentWindow = _window;
-        _window.windowLevel = UIWindowLevelStatusBar;
-        [_window setBackgroundColor: backgroundColorDict[[@(type) stringValue]]];
-
-        _window.layer.borderColor = [UIColor clearColor].CGColor;
-        _window.layer.borderWidth = 2.0f;
+        CGFloat windowX = (screenWidth - windowWidth) / 2;
+        CGFloat windowY = (position == 1) ? (screenHeight - windowHeight - 50) : 30;
+        
+        // 7. 调整安全区域（关键修改）
+        UIEdgeInsets safeArea = UIEdgeInsetsZero;
+        if (@available(iOS 11.0, *)) {
+            safeArea = activeScene ? activeScene.keyWindow.safeAreaInsets : [UIApplication sharedApplication].windows.firstObject.safeAreaInsets;
+            windowY = (position == 1) ? (windowY - safeArea.bottom) : (windowY + safeArea.top);
+        }
+        
+        // 8. 创建窗口（iOS 16+需要关联场景）
+        _window = activeScene ? [[UIWindow alloc] initWithWindowScene:activeScene] : [[UIWindow alloc] initWithFrame:screenBounds];
+        _window.frame = CGRectMake(windowX, windowY, windowWidth, windowHeight);
+        _window.windowLevel = UIWindowLevelStatusBar + 1;
+        _window.backgroundColor = backgroundColorDict[[@(type) stringValue]];
         _window.layer.cornerRadius = 10;
-        [_window setUserInteractionEnabled:NO];
-
-        UILabel *contentLabel = [[UILabel alloc]initWithFrame:CGRectMake(windowWidth/2 - contentSize.width/2, 0, contentSize.width, contentSize.height)];
-        contentLabel.font = font;
-        contentLabel.text = content;
-        contentLabel.numberOfLines = 1;
-        contentLabel.baselineAdjustment = UIBaselineAdjustmentAlignBaselines; // or UIBaselineAdjustmentAlignCenters, or UIBaselineAdjustmentNone
-        contentLabel.adjustsFontSizeToFitWidth = YES;
-        contentLabel.adjustsLetterSpacingToFitWidth = YES;
-        contentLabel.minimumScaleFactor = 10.0f/12.0f;
-        contentLabel.clipsToBounds = YES;
-        contentLabel.backgroundColor = [UIColor clearColor];
-        contentLabel.textColor = fontColorDict[[@(type) stringValue]];
-        contentLabel.textAlignment = NSTextAlignmentLeft;
-        [_window addSubview:contentLabel];
-
         _window.hidden = NO;
-
-    });
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        [NSThread sleepForTimeInterval:duration];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (currentWindow != _window)
-            {
-                return;
+        
+        // 9. 添加文本标签
+        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, windowWidth, windowHeight)];
+        label.text = content;
+        label.font = font;
+        label.textColor = fontColorDict[[@(type) stringValue]];
+        label.textAlignment = NSTextAlignmentCenter;
+        [_window addSubview:label];
+        
+        // 10. 自动隐藏
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(duration * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            if (_window) {
+                _window.hidden = YES;
+                _window = nil;
             }
-            _window.hidden = YES;
-            _window = nil;
         });
     });
-    
 }
 
 - (void) show {

@@ -340,7 +340,6 @@ void initSenderId()
         }
     }
     
-    NSLog(@"com.zjx.springboard: cannot read the sender id from file because the file doesn't exist or the device has restarted. Start set senderid callback.");
     startSetSenderIDCallBack();
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
