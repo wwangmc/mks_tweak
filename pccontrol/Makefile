@@ -16,7 +16,7 @@ TWEAK_NAME = pccontrol
 # pccontrol_ARCHS =  arm64
 pccontrol_FILES = $(wildcard *.x*) $(wildcard TouchIndicator/*.x*) 
 pccontrol_CFLAGS = -Wno-error -Wno-module-import-in-extern-c -fobjc-arc
-pccontrol_FRAMEWORKS = UIKit AssetsLibrary AVFoundation CoreMedia CoreVideo IOSurface
+pccontrol_FRAMEWORKS = UIKit AssetsLibrary CoreMedia  IOSurface
 pccontrol_PRIVATE_FRAMEWORKS = IOKit
 pccontrol_LIBRARIES = substrate
 

@@ -1,51 +1,19 @@
 #include "headers/BKUserEventTimer.h"
-
-#include <UIKit/UIKit.h>
-#include <objc/runtime.h>
-#include <sys/sysctl.h>
-#include <sys/xattr.h>
-#include <substrate.h>
-#include <math.h>
-
-#include <mach/mach.h>
-#import <CoreGraphics/CoreGraphics.h>
 #import <IOKit/hid/IOHIDService.h>
-
-#include<mach-o/dyld.h>
-
-#include <stdlib.h>
 #include "socketConfig.h"
 
-#include <stdio.h>
-#include <unistd.h>
-#include <signal.h>
-#include <dlfcn.h>
-#include <notify.h>
 #include "headers/CFUserNotification.h"
-#import <os/lock.h>
 
 #import "Touch.h"
 #import "SocketServer.h"
 #import "Common.h"
 #import "Screen.h"
 #import "AlertBox.h"
-#import "Toast.h"
-#import "SysExecutor.h"
-
-
-
-//static ActivatorListener *activatorInstance;
-
-
-
 
 void *(*IOHIDEventAppendEventOld)(IOHIDEventRef parent, IOHIDEventRef child);
 
 
-// -------------
 IOHIDEventSystemClientRef ioHIDEventSystemForPopupDectect = NULL;
-
-
 
 
 /*
@@ -106,9 +74,6 @@ void startPopupListeningCallBack()
         // init touch screensize. Temporarily put this line here. Will be removed.
         initTouchGetScreenSize();
 
-
-        //system("sudo zxtouchb -e \"chown -R mobile:mobile /var/mobile/Documents/com.zjx.zxtouchsp\"");
-        //sysExecute(@"sudo zxtouchb -e \"chown -R mobile:mobile /var/mobile/Library/ZXTouch\"");
 
         socketServer();
     });
