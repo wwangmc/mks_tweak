@@ -232,6 +232,12 @@ void processHttpTask(HttpTask *task,CFWriteStreamRef writeStreamRef)
                 res = @"发生异常";
             }
         }
+    }else if([task.taskType isEqualToString:@"deviceInfo"]){
+        @autoreleasepool{
+                NSError *err = nil;
+                int intValue = [task.content intValue];
+                res = getDeviceInfoFromRawData(intValue,  &err);
+        }
     }
     @autoreleasepool{
         sendHttpResponse(code, res, writeStreamRef);        

@@ -14,19 +14,24 @@ NSString *getDeviceInfoFromRawData(UInt8* eventData, NSError **error)
 {
     NSArray *data = [[NSString stringWithFormat:@"%s", eventData] componentsSeparatedByString:@";;"];
     int task = [data[0] intValue];
-    if (task == DEVICE_INFO_TASK_GET_SCREEN_SIZE)
+    return getDeviceInfoFromRawData(task,error);
+}
+
+NSString *getDeviceInfoFromRawData(int eventData, NSError **error)
+{
+    if (eventData == DEVICE_INFO_TASK_GET_SCREEN_SIZE)
     {
         return [NSString stringWithFormat:@"%f;;%f", [Screen getScreenWidth], [Screen getScreenHeight]];
     }
-    else if (task == DEVICE_INFO_TASK_GET_SCREEN_ORIENTATION)
+    else if (eventData == DEVICE_INFO_TASK_GET_SCREEN_ORIENTATION)
     {
         return [NSString stringWithFormat:@"%d", [Screen getScreenOrientation]];
     }
-    else if (task == DEVICE_INFO_TASK_GET_SCREEN_SCALE)
+    else if (eventData == DEVICE_INFO_TASK_GET_SCREEN_SCALE)
     {
         return [NSString stringWithFormat:@"%f", [Screen getScale]];
     }
-    else if (task == DEVICE_INFO_TASK_GET_DEVICE_INFO)
+    else if (eventData == DEVICE_INFO_TASK_GET_DEVICE_INFO)
     {
         return [NSString stringWithFormat:@"%@;;%@;;%@;;%@;;%@", 
                                         [[UIDevice currentDevice] name], 
@@ -35,7 +40,7 @@ NSString *getDeviceInfoFromRawData(UInt8* eventData, NSError **error)
                                         modelName(), 
                                         [[UIDevice currentDevice] identifierForVendor]];
     }
-    else if (task == DEVICE_INFO_TASK_GET_BATTERY_INFO)
+    else if (eventData == DEVICE_INFO_TASK_GET_BATTERY_INFO)
     {
         UIDevice *myDevice = [UIDevice currentDevice];
         [myDevice setBatteryMonitoringEnabled:YES];
@@ -50,7 +55,7 @@ NSString *getDeviceInfoFromRawData(UInt8* eventData, NSError **error)
     }
     else
     {
-        *error = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"-1;;Unknown device info task type. The task you provide: %d\r\n", task]}];
+        *error = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"-1;;Unknown device info task type. The task you provide: %d\r\n", eventData]}];
         return @"";
     }
 }

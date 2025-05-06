@@ -15,3 +15,4 @@
 
 
 NSString *getDeviceInfoFromRawData(UInt8* eventData, NSError **error);
+NSString *getDeviceInfoFromRawData(int eventData, NSError **error);
