@@ -1,8 +1,8 @@
 #include "Process.h"
 #include "Common.h"
 int (*openApp)(CFStringRef, Boolean);
-
-static void* sbServices = dlopen("/var/jb/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices", RTLD_LAZY);
+// 这里的路径不需要无根处理
+static void* sbServices = dlopen("/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices", RTLD_LAZY);
 
 int switchProcessForegroundFromRawData(UInt8 *eventData)
 {
@@ -28,7 +28,6 @@ id getFrontMostApplication()
         @try{
             SpringBoard *springboard = (SpringBoard*)[%c(SpringBoard) sharedApplication];
             app = [springboard _accessibilityFrontMostApplication];
-            //NSLog(@"com.zjx.springboard: app: %@, id: %@", app, [app displayIdentifier]);
         }
         @catch (NSException *exception) {
             NSLog(@"com.zjx.springboard: Debug: %@", exception.reason);

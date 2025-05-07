@@ -214,6 +214,10 @@ void processHttpTask(HttpTask *task,CFWriteStreamRef writeStreamRef)
                 int intValue = [task.content intValue];
                 res = getDeviceInfoFromRawData(intValue,  &err);
         }
+    }else if([task.taskType isEqualToString:@"switchApp"]){
+        @autoreleasepool{
+            bringAppForeground(task.content);
+        }
     }
     @autoreleasepool{
         sendHttpResponse(code, res, writeStreamRef);        
