@@ -226,6 +226,8 @@ void processHttpTask(HttpTask *task,CFWriteStreamRef writeStreamRef)
         @autoreleasepool{
             doublePressHome();
         }
+    }else if ([task.taskType isEqualToString:@"hideKeyboard"]) {
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(2), @"task_content": @(1)} deliverImmediately: true];
     }
     @autoreleasepool{
         sendHttpResponse(code, res, writeStreamRef);        

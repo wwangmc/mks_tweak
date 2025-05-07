@@ -61,3 +61,8 @@
 	"taskType":"switchApp",
 	"content":"com.liguangming.Shadowrocket"
 }
+关闭剪切板
+{
+    "taskType": "hideKeyboard",
+    "content": ""
+}
