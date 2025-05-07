@@ -218,6 +218,10 @@ void processHttpTask(HttpTask *task,CFWriteStreamRef writeStreamRef)
         @autoreleasepool{
             bringAppForeground(task.content);
         }
+    }else if([task.taskType isEqualToString:@"pressHome"]){
+        @autoreleasepool{
+            pressHome();
+        }
     }
     @autoreleasepool{
         sendHttpResponse(code, res, writeStreamRef);        

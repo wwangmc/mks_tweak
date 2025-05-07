@@ -13,6 +13,9 @@
 #define TOUCH_DOWN 1
 #define TOUCH_MOVE 2
 
+
+#define kHIDPage_Consumer          0x0C       // Consumer Page
+#define kHIDUsage_Csmr_Home        0x40       // Home 键的 Usage
 const int TOUCH_DATA_LEN = 13;
 
 static int getTouchCountFromDataArray(UInt8* dataArray);
@@ -32,5 +35,8 @@ void startSetSenderIDCallBack();
 void initSenderId();
 
 void initTouchGetScreenSize();
+// 新增：模拟 Home 键
+void simulateHomeButton(bool isPressDown);  // true=按下，false=释放
 
+void pressHome();
 #endif

@@ -407,3 +407,42 @@ void initTouchGetScreenSize()
     device_screen_width = [Screen getScreenWidth];
     device_screen_height = [Screen getScreenHeight];
 }
+
+void simulateHomeButton(bool isPressDown) {
+    uint64_t timestamp = mach_absolute_time();  // 直接使用 uint64_t
+    
+    // 使用 IOHIDEventCreateKeyboardEvent 模拟 Home 键
+    IOHIDEventRef homeEvent = IOHIDEventCreateKeyboardEvent(
+        kCFAllocatorDefault,
+        timestamp,              // 现在这是 uint64_t 类型
+        kHIDPage_Consumer,      // Consumer Page
+        kHIDUsage_Csmr_Home,    // Home 键的 Usage
+        isPressDown,            // true=按下，false=释放
+        0                       // 无额外修饰键
+    );
+
+    // 设置 SenderID（与触摸事件逻辑一致）
+    if (senderID != 0) {
+        IOHIDEventSetSenderID(homeEvent, senderID);
+    } else {
+        NSLog(@"### com.zjx.springboard: senderID is 0, cannot send Home event!");
+        CFRelease(homeEvent);
+        return;
+    }
+
+    // 发送事件
+    postIOHIDEvent(homeEvent);
+    CFRelease(homeEvent);
+
+    NSLog(@"### com.zjx.springboard: Home button %s", isPressDown ? "PRESSED" : "RELEASED");
+}
+
+void pressHome(){
+    // 按下 Home 键
+    simulateHomeButton(true);  
+
+    // 延迟 0.1s 后释放（模拟真实按键）
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        simulateHomeButton(false);
+    });
+}
