@@ -159,9 +159,13 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
         }
     }
     else if(taskType == TASK_HOME){
-        sendGETRequest(@"http://localhost:50005/event?type=20&state=0&text=");
+        @autoreleasepool{
+            pressHome();
+        }
     }else if(taskType == TASK_SWITCH){
-        sendGETRequest(@"http://localhost:50005/event?type=21&state=0&text=");
+      @autoreleasepool{
+            doublePressHome();
+        }
     }
 }
 
@@ -228,6 +232,12 @@ void processHttpTask(HttpTask *task,CFWriteStreamRef writeStreamRef)
         }
     }else if ([task.taskType isEqualToString:@"hideKeyboard"]) {
         [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(2), @"task_content": @(1)} deliverImmediately: true];
+    }else if ([task.taskType isEqualToString:@"input"]) {
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(1), @"task_content": task.content} deliverImmediately: true];
+    }else if ([task.taskType isEqualToString:@"del"]) {
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(4), @"task_content": task.content} deliverImmediately: true];
+    }else if([task.taskType isEqualToString:@"moveCursor"]){
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(3), @"task_content": task.content} deliverImmediately: true];
     }
     @autoreleasepool{
         sendHttpResponse(code, res, writeStreamRef);        

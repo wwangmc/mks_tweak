@@ -61,8 +61,23 @@
 	"taskType":"switchApp",
 	"content":"com.liguangming.Shadowrocket"
 }
-关闭剪切板
+关闭键盘
 {
     "taskType": "hideKeyboard",
     "content": ""
+}
+输入文本
+{
+    "taskType": "input",
+    "content": "nb666"
+}
+左移光标
+{
+    "taskType": "moveCursor",
+    "content": "-2"
+}
+右移光标
+{
+    "taskType": "moveCursor",
+    "content": "2"
 }

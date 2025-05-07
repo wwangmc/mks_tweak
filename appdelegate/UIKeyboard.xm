@@ -12,7 +12,6 @@
 #define VIRTUAL_KEYBOARD 2
 #define MOVE_CURSOR 3
 #define DELETE_CHARACTER 4
-#define PASTE_FROM_CLIPBOARD 5
 
 #define TEST 99
 
@@ -84,8 +83,14 @@
 		if (taskId == INSERT_TEXT)
 		{
             dispatch_async(dispatch_get_main_queue(), ^{
-                [self insertText:data[@"task_content"]];
-                NSLog(@"com.zjx.appdelegate: insert text: %@", data[@"task_content"]);
+                NSString *text = data[@"task_content"];
+                id<UIKeyInput> delegate = (id<UIKeyInput>)self.inputDelegate;
+                if ([delegate respondsToSelector:@selector(insertText:)]) {
+                    [delegate insertText:text];
+                    NSLog(@"com.zjx.appdelegate: inserted text via inputDelegate: %@", text);
+                } else {
+                    NSLog(@"com.zjx.appdelegate: inputDelegate does not respond to insertText:");
+                }           
             });
 		}
         else if (taskId == VIRTUAL_KEYBOARD)
@@ -121,11 +126,7 @@
             }
             NSLog(@"com.zjx.appdelegate: delete characters by amount: %d", numOfCharacterToDel);
         }
-        else if (taskId == PASTE_FROM_CLIPBOARD)
-        {
-            UIPasteboard *pb = [UIPasteboard generalPasteboard];
-            [self insertText:[pb string]];
-        }
+
 	}
 
 %end
