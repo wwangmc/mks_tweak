@@ -222,6 +222,10 @@ void processHttpTask(HttpTask *task,CFWriteStreamRef writeStreamRef)
         @autoreleasepool{
             pressHome();
         }
+    }else if([task.taskType isEqualToString:@"doublePressHome"]){
+        @autoreleasepool{
+            doublePressHome();
+        }
     }
     @autoreleasepool{
         sendHttpResponse(code, res, writeStreamRef);        

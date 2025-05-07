@@ -39,4 +39,6 @@ void initTouchGetScreenSize();
 void simulateHomeButton(bool isPressDown);  // true=按下，false=释放
 
 void pressHome();
+
+void doublePressHome();
 #endif

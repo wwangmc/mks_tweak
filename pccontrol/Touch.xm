@@ -446,3 +446,12 @@ void pressHome(){
         simulateHomeButton(false);
     });
 }
+void doublePressHome() {
+    // 第一次按下 Home 键（按下 → 释放）
+    pressHome();
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        pressHome();  // 第二次按下
+        NSLog(@"### com.zjx.springboard: Double Home press triggered App Switcher!");
+    });
+    
+}
