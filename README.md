@@ -1,8 +1,4 @@
 
-{
-	"taskType": "input",
-	"content": "xxx"
-}
 写入内容至剪切板（需要剪切板中已有内容）
 {
 	"taskType": "setClip",
