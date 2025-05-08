@@ -10,6 +10,7 @@
 #include "Screen.h"
 #import "SysExecutor.h"
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h> // 添加UIKit框架用于截图功能
 
 extern CFRunLoopRef recordRunLoop;
 
@@ -39,13 +40,45 @@ get task type
 */
 static int getTaskType(UInt8* dataArray)
 {
-	int taskType = 0;
-	for (int i = 0; i <= 1; i++)
-	{
-		taskType += (dataArray[i] - '0')*pow(10, 1-i);
-	}
-	return taskType;
+    int taskType = 0;
+    for (int i = 0; i <= 1; i++)
+    {
+        taskType += (dataArray[i] - '0')*pow(10, 1-i);
+    }
+    return taskType;
 }
+
+// 新增截图函数
+NSData* takeScreenshot() {
+    @autoreleasepool {
+        // 获取主屏幕
+        UIScreen *mainScreen = [UIScreen mainScreen];
+        // 获取屏幕的缩放因子
+        CGFloat scale = mainScreen.scale;
+        // 获取屏幕尺寸
+        CGRect screenRect = mainScreen.bounds;
+        
+        // 创建图形上下文
+        UIGraphicsBeginImageContextWithOptions(screenRect.size, NO, scale);
+        CGContextRef context = UIGraphicsGetCurrentContext();
+        
+        // 遍历所有窗口
+        for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
+            // 将窗口内容绘制到图形上下文中
+            [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
+        }
+        
+        // 从图形上下文中获取图像
+        UIImage *screenshot = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+        
+        // 将图像转换为JPEG格式的NSData
+        NSData *imageData = UIImageJPEGRepresentation(screenshot, 0.8); // 80%质量
+        
+        return imageData;
+    }
+}
+
 void sendGETRequest(NSString *urlString) {
     // 检查 URL 是否有效
     NSURL *url = [NSURL URLWithString:urlString];
@@ -81,6 +114,7 @@ void sendGETRequest(NSString *urlString) {
 
     [task resume];
 }
+
 /**
 Process Task
 */
@@ -127,7 +161,6 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
             notifyClient((UInt8*)"0\r\n", writeStreamRef);
         }
     }
-
     else if (taskType == TASK_SHOW_TOAST)
     {
         @autoreleasepool {
@@ -163,8 +196,20 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
             pressHome();
         }
     }else if(taskType == TASK_SWITCH){
-      @autoreleasepool{
+        @autoreleasepool{
             doublePressHome();
+        }
+    }
+    else if(taskType == TASK_SCREENSHOT){ // 新增截图处理
+        @autoreleasepool{
+            NSData *screenshotData = takeScreenshot();
+            if (screenshotData) {
+                // 将截图数据转换为base64字符串返回
+                NSString *base64String = [screenshotData base64EncodedStringWithOptions:0];
+                notifyClient((UInt8*)[[NSString stringWithFormat:@"0;;%@\r\n", base64String] UTF8String], writeStreamRef);
+            } else {
+                notifyClient((UInt8*)"1;;Failed to take screenshot\r\n", writeStreamRef);
+            }
         }
     }
 }
@@ -238,9 +283,19 @@ void processHttpTask(HttpTask *task,CFWriteStreamRef writeStreamRef)
         [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(4), @"task_content": task.content} deliverImmediately: true];
     }else if([task.taskType isEqualToString:@"moveCursor"]){
         [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(3), @"task_content": task.content} deliverImmediately: true];
+    }else if([task.taskType isEqualToString:@"screenshot"]) { // 新增HTTP截图处理
+        @autoreleasepool {
+            NSData *screenshotData = takeScreenshot();
+            if (screenshotData) {
+                // 将截图数据转换为base64字符串返回
+                res = [screenshotData base64EncodedStringWithOptions:0];
+            } else {
+                code = 500;
+                res = @"Failed to take screenshot";
+            }
+        }
     }
     @autoreleasepool{
         sendHttpResponse(code, res, writeStreamRef);        
     }
 }
-

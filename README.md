@@ -77,3 +77,13 @@
     "taskType": "moveCursor",
     "content": "2"
 }
+home键
+{
+    "taskType": "pressHome",
+    "content": ""
+}
+双击home
+{
+    "taskType": "doublePressHome",
+    "content": ""
+}
