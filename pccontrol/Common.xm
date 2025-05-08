@@ -1,6 +1,7 @@
 #include "Common.h"
 #include "Config.h"
 #import <sys/utsname.h>
+#import <rootless.h>
 
 
 /*
@@ -85,7 +86,7 @@ Get document root of springboard
 NSString* getDocumentRoot()
 {
     //NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    return [NSString stringWithFormat:@"/var/jb/var/mobile/Library/%s/" ,DOCUMENT_ROOT_FOLDER_NAME];
+    return [NSString stringWithFormat:ROOT_PATH_NS(@"/var/mobile/Library/%s/") ,DOCUMENT_ROOT_FOLDER_NAME];
 }
 
 /**
@@ -145,13 +146,13 @@ pid_t system2(const char * command, int * infp, int * outfp)
         dup2(p_stdin[0], 0);
         close(p_stdout[0]);
         dup2(p_stdout[1], 1);
-        dup2(::open("/var/jb/dev/null", O_RDONLY), 2);
+        dup2(::open(ROOT_PATH("/dev/null"), O_RDONLY), 2);
         /// Close all other descriptors for the safety sake.
         for (int i = 3; i < 4096; ++i)
             ::close(i);
 
         setsid();
-        execl("/var/jb/bin/sh", "sh", "-c", command, NULL);
+        execl(ROOT_PATH("/bin/sh"), "sh", "-c", command, NULL);
         _exit(1);
     }
 
