@@ -207,7 +207,7 @@ void showToastFromJson(NSDictionary *jsonDict, NSError **error) {
         
         // 4. 获取活跃窗口场景（iOS 16+关键修改）
         UIWindowScene *activeScene = nil;
-        if (@available(iOS 13.0, *)) {
+        if (@available(iOS 15.0, *)) {
             for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
                 if (scene.activationState == UISceneActivationStateForegroundActive) {
                     activeScene = (UIWindowScene *)scene;

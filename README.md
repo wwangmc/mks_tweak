@@ -9,7 +9,7 @@
 	"taskType": "getClip",
 	"content": ""
 }
-悬浮窗
+悬浮窗 
 {
     "taskType": "toast",
     "content": {
