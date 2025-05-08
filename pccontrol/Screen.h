@@ -19,7 +19,7 @@
 + (UIImage*)screenShotUIImage;
 + (void)releaseUIImage:(UIImage**)img;
 + (CGImageRef)createScreenShotCGImageRef;
-
++ (NSData *)takeScreenshotWithQuality:(CGFloat)quality;
 @end
 
 #endif
