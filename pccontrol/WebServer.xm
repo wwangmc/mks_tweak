@@ -24,7 +24,14 @@ void initHandle(GCDWebServer *webServer)
 {
     // 处理截图
     [webServer addHandlerForMethod:@"GET" path:@"/screenshot" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSData *imageData = [Screen takeScreenshotWithQuality:0.3];
+        NSString *quality = request.query[@"quality"];
+        if(!quality){
+            return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
+                                                message:@"Missing quality"];
+        }
+        float floatValue = [quality floatValue];
+
+        NSData *imageData = [Screen takeScreenshotWithQuality:floatValue];
 
         return [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
     }];
