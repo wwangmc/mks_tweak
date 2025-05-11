@@ -240,9 +240,22 @@ OBJC_EXTERN UIImage *_UICreateScreenUIImage(void);
     CGFloat scale = mainScreen.scale;
     CGRect screenRect = mainScreen.bounds;
     
+    // 只处理可见且不透明的窗口
+    NSArray<UIWindow *> *windows = [[UIApplication sharedApplication] windows];
+    NSMutableArray<UIWindow *> *visibleWindows = [NSMutableArray array];
+    
+    for (UIWindow *window in windows) {
+        if (!window.hidden && window.alpha > 0 && window.windowLevel >= UIWindowLevelNormal) {
+            [visibleWindows addObject:window];
+        }
+    }
+    
     UIGraphicsBeginImageContextWithOptions(screenRect.size, NO, scale);
     
-    for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
+    // 按窗口层级从后向前绘制
+    for (UIWindow *window in [visibleWindows sortedArrayUsingComparator:^NSComparisonResult(UIWindow *w1, UIWindow *w2) {
+        return [@(w2.windowLevel) compare:@(w1.windowLevel)];
+    }]) {
         [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
     }
     

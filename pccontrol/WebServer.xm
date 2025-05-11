@@ -20,18 +20,36 @@ void initHandle(GCDWebServer *webServer)
 {
     // 处理截图
     [webServer addHandlerForMethod:@"GET" path:@"/screenshot" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        __block NSData *imageData = nil;
-        dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+        NSData *imageData = [Screen takeScreenshotWithQuality:0.3];
 
-        dispatch_async(dispatch_get_main_queue(), ^{
-            imageData = [Screen takeScreenshotWithQuality:0.5];
-
-            dispatch_semaphore_signal(semaphore);
-        });
-
-        dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
-        return [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/png"];
+        return [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
     }];
+
+    // 流式截图接口
+     [webServer addHandlerForMethod:@"GET"
+                             path:@"/live_screenshot"
+                     requestClass:[GCDWebServerRequest class]
+                     processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        
+        GCDWebServerStreamedResponse *response = 
+            [GCDWebServerStreamedResponse responseWithContentType:@"multipart/x-mixed-replace; boundary=boundary"
+                                               asyncStreamBlock:^(GCDWebServerBodyReaderCompletionBlock completionBlock) {
+            tweak.isStreaming = YES;
+            tweak.streamCompletionBlock = completionBlock;
+            
+            tweak.displayLink = [CADisplayLink displayLinkWithTarget:tweak selector:@selector(captureFrame:)];
+            [tweak.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+            tweak.displayLink.preferredFramesPerSecond = 10; // 10 FPS
+        }];
+        
+        // 客户端断开时停止流
+        response.onClientConnectionClosed = ^{
+            [tweak stopStreaming];
+        };
+        
+        return response;
+    }];
+
     // 按下home键
     [webServer addHandlerForMethod:@"GET" path:@"/pressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
             pressHome();

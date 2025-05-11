@@ -4,6 +4,7 @@
 #include "GCDWebServerDataResponse.h"
 #include "GCDWebServerErrorResponse.h"
 #include "GCDWebServerDataRequest.h"
+#include "GCDWebServerStreamedResponse.h"
 #define WEB_PORT 8080
 
 void startWebServer();
