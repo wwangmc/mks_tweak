@@ -7,6 +7,10 @@
 #include "AlertBox.h"
 #include "Toast.h"
 #include "DeviceInfo.h"
+#import "GCDWebServerDataResponse.h"
+#import "GCDWebServerErrorResponse.h"
+#import "GCDWebServerDataRequest.h"
+#import "GCDWebServerStreamedResponse.h"
 
 void startWebServer()
 {
@@ -30,22 +34,24 @@ void initHandle(GCDWebServer *webServer)
                              path:@"/live_screenshot"
                      requestClass:[GCDWebServerRequest class]
                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        
+        Screen *screen = [Screen new];
+
         GCDWebServerStreamedResponse *response = 
             [GCDWebServerStreamedResponse responseWithContentType:@"multipart/x-mixed-replace; boundary=boundary"
                                                asyncStreamBlock:^(GCDWebServerBodyReaderCompletionBlock completionBlock) {
-            tweak.isStreaming = YES;
-            tweak.streamCompletionBlock = completionBlock;
+
+            screen.isStreaming = YES;
+            screen.streamCompletionBlock = completionBlock;
             
-            tweak.displayLink = [CADisplayLink displayLinkWithTarget:tweak selector:@selector(captureFrame:)];
-            [tweak.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
-            tweak.displayLink.preferredFramesPerSecond = 10; // 10 FPS
+            screen.displayLink = [CADisplayLink displayLinkWithTarget:screen selector:@selector(captureFrame:)];
+            [screen.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+            screen.displayLink.preferredFramesPerSecond = 20; // 10 FPS
         }];
         
         // 客户端断开时停止流
-        response.onClientConnectionClosed = ^{
-            [tweak stopStreaming];
-        };
+        /*response.connectionDidCloseBlock  = ^{
+            [screen stopStreaming];
+        };*/
         
         return response;
     }];
