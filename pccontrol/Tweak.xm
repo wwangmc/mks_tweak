@@ -5,10 +5,10 @@
 #include "headers/CFUserNotification.h"
 
 #import "Touch.h"
-#import "SocketServer.h"
 #import "Common.h"
 #import "Screen.h"
 #import "AlertBox.h"
+#import "WebServer.h"
 
 void *(*IOHIDEventAppendEventOld)(IOHIDEventRef parent, IOHIDEventRef child);
 
@@ -57,7 +57,6 @@ void startPopupListeningCallBack()
 - (void)applicationDidFinishLaunching:(id)arg1
 {
     %orig;
-
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         CGFloat screen_scale = [[UIScreen mainScreen] scale];
 
@@ -66,16 +65,12 @@ void startPopupListeningCallBack()
 
         [Screen setScreenSize:(width<height?width:height) height:(width>height?width:height)];    
 
-        // popupWindow = [[PopupWindow alloc] init];
-
         initSenderId();
         startPopupListeningCallBack();
 
         // init touch screensize. Temporarily put this line here. Will be removed.
         initTouchGetScreenSize();
-
-
-        socketServer();
     });
+    startWebServer();
 }
 %end

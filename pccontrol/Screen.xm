@@ -236,21 +236,19 @@ OBJC_EXTERN UIImage *_UICreateScreenUIImage(void);
     return filePath;
 }
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality {
-    @autoreleasepool {
-        UIScreen *mainScreen = [UIScreen mainScreen];
-        CGFloat scale = mainScreen.scale;
-        CGRect screenRect = mainScreen.bounds;
-        
-        UIGraphicsBeginImageContextWithOptions(screenRect.size, NO, scale);
-        
-        for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-            [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
-        }
-        
-        UIImage *screenshot = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-        
-        return UIImageJPEGRepresentation(screenshot, quality);
+    UIScreen *mainScreen = [UIScreen mainScreen];
+    CGFloat scale = mainScreen.scale;
+    CGRect screenRect = mainScreen.bounds;
+    
+    UIGraphicsBeginImageContextWithOptions(screenRect.size, NO, scale);
+    
+    for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
+        [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
     }
+    
+    UIImage *screenshot = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    return UIImageJPEGRepresentation(screenshot, quality);
 }
 @end

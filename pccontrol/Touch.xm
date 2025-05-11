@@ -2,7 +2,6 @@
 #include "Common.h"
 #include "Screen.h"
 #include "AlertBox.h"
-#include "Task.h"
 
 #define TOUCH_SENDER_ID_PLIST_FILE_NAME @"senderid.plist"
 

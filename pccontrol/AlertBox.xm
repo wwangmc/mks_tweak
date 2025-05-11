@@ -1,5 +1,4 @@
 #include "AlertBox.h"
-#include "SocketServer.h"
 
 void showAlertBoxFromRawData(UInt8 *eventData, NSError **error)
 {
