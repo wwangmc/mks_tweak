@@ -27,6 +27,12 @@ static void popupWindowCallBack(void* target, void* refcon, IOHIDServiceRef serv
     {
         if (IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage) == 234 && IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown) == 0)
         {
+            CFTimeInterval currentTime = CACurrentMediaTime();
+            if (currentTime - startTime > 0.4)
+            {
+                startTime = CACurrentMediaTime();
+                return;
+            }
             showAlertBox(@"通知",@"音量减被按下",10);
         }
     }
@@ -57,6 +63,7 @@ void startPopupListeningCallBack()
 - (void)applicationDidFinishLaunching:(id)arg1
 {
     %orig;
+    startWebServer();
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         CGFloat screen_scale = [[UIScreen mainScreen] scale];
 
@@ -70,7 +77,9 @@ void startPopupListeningCallBack()
 
         // init touch screensize. Temporarily put this line here. Will be removed.
         initTouchGetScreenSize();
+        
+        CFRunLoopRun();
     });
-    startWebServer();
+
 }
 %end
