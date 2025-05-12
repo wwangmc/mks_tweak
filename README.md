@@ -1,9 +1,9 @@
 获取截屏
-GET http://192.168.31.177:8080/screenshot
+GET http://{ip}:8081/screenshot
 
 
 写入内容至剪切板（需要剪切板中已有内容）
-POST http://192.168.31.177:8080/setClip
+POST http://{ip}:8081/setClip
 {
   "text": "3838测试11"
 }
@@ -11,11 +11,11 @@ POST http://192.168.31.177:8080/setClip
 
 
 获取剪切板内容
-GET http://192.168.31.177:8080/getClip
+GET http://{ip}:8081/getClip
 
 
 弹窗
-POST http://192.168.31.177:8080/alert
+POST http://{ip}:8081/alert
 {
   "title": "success",
   "text": "nb666",
@@ -23,7 +23,7 @@ POST http://192.168.31.177:8080/alert
 }
 
 悬浮窗 
-POST http://192.168.31.177:8080/toast
+POST http://{ip}:8081/toast
 {
 	"type": "success",
 	"content": "nb666",
@@ -33,10 +33,10 @@ POST http://192.168.31.177:8080/toast
 }
 
 获取设备信息（type可选 1屏幕大小 2屏幕处于横屏或竖屏 3screen scale 30 设备信息 型号版本等 31电池信息）
-GET http://192.168.31.177:8080/deviceInfo?type=1
+GET http://{ip}:8081/deviceInfo?type=1
 
-执行命令 （可搭配curl查询ip）
-POST http://192.168.31.177:8080/runShell
+执行命令 （可搭配curl查询ip）(可搭配 uiopen命令实现打开url)
+POST http://{ip}:8081/runShell
 {
 	"cmd": "ls /var"
 }
@@ -46,7 +46,7 @@ POST http://192.168.31.177:8080/runShell
 	#define TOUCH_DOWN 1
 	#define TOUCH_MOVE 2
 )
-POST http://192.168.31.177:8080/touch
+POST http://{ip}:8081/touch
 {
 	"x": 119,
 	"y": 871,
@@ -55,28 +55,28 @@ POST http://192.168.31.177:8080/touch
 }
 
 获取应用沙盒目录
-GET http://192.168.31.177:8080/sandboxPath?pkgName=com.liguangming.Shadowrocket
+GET http://{ip}:8081/sandboxPath?pkgName=com.liguangming.Shadowrocket
 
 切换app
-GET http://192.168.31.177:8080/switchApp?pkgName=com.liguangming.Shadowrocket
+GET http://{ip}:8081/switchApp?pkgName=com.liguangming.Shadowrocket
 
 关闭键盘
-GET http://192.168.31.177:8080/hideKeyboard
+GET http://{ip}:8081/hideKeyboard
 
 输入文本
-POST http://192.168.31.177:8080/input
+POST http://{ip}:8081/input
 {
     "text": "nb666"
 }
 
 移动光标(负数左移 正数右移)
-GET http://192.168.31.177:8080/moveCursor?num=-2
+GET http://{ip}:8081/moveCursor?num=-2
 
 删除文本
-GET http://192.168.31.177:8080/del?num=2
+GET http://{ip}:8081/del?num=2
 
 home键
-GET http://192.168.31.177:8080/pressHome
+GET http://{ip}:8081/pressHome
 
 双击home
-GET http://192.168.31.177:8080/doublePressHome
+GET http://{ip}:8081/doublePressHome
