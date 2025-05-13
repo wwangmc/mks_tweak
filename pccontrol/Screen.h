@@ -16,12 +16,7 @@
 + (CGFloat)getScreenWidth;
 + (CGFloat)getScreenHeight;
 + (CGFloat)getScale;
-+ (NSString*)screenShot;
 + (CGRect)getBounds;
-+ (NSString*)screenShotAlwaysUp;
-+ (UIImage*)screenShotUIImage;
-+ (void)releaseUIImage:(UIImage**)img;
-+ (CGImageRef)createScreenShotCGImageRef;
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality;
 @end
 
