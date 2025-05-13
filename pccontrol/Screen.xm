@@ -267,29 +267,47 @@ OBJC_EXTERN UIImage *_UICreateScreenUIImage(void);
     UIScreen *mainScreen = [UIScreen mainScreen];
     CGFloat scale = mainScreen.scale;
     CGRect screenRect = mainScreen.bounds;
+
+    // 始终使用竖屏大小（即宽小高大）
+    CGSize portraitSize = CGSizeMake(MIN(screenRect.size.width, screenRect.size.height),
+                                     MAX(screenRect.size.width, screenRect.size.height));
     
-    // 只处理可见且不透明的窗口
     NSArray<UIWindow *> *windows = [[UIApplication sharedApplication] windows];
     NSMutableArray<UIWindow *> *visibleWindows = [NSMutableArray array];
-    
+
     for (UIWindow *window in windows) {
         if (!window.hidden && window.alpha > 0 && window.windowLevel >= UIWindowLevelNormal) {
             [visibleWindows addObject:window];
         }
     }
+
+    UIGraphicsBeginImageContextWithOptions(portraitSize, NO, scale);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+
+    UIInterfaceOrientation orientation = [UIApplication sharedApplication].statusBarOrientation;
     
-    UIGraphicsBeginImageContextWithOptions(screenRect.size, NO, scale);
-    
+    if (orientation == UIInterfaceOrientationLandscapeLeft) {
+        CGContextTranslateCTM(context, 0, portraitSize.height);
+        CGContextRotateCTM(context, -M_PI_2);
+    } else if (orientation == UIInterfaceOrientationLandscapeRight) {
+        CGContextTranslateCTM(context, portraitSize.width, 0);
+        CGContextRotateCTM(context, M_PI_2);
+    } else if (orientation == UIInterfaceOrientationPortraitUpsideDown) {
+        CGContextTranslateCTM(context, portraitSize.width, portraitSize.height);
+        CGContextRotateCTM(context, M_PI);
+    }
+
     // 按窗口层级从后向前绘制
     for (UIWindow *window in [visibleWindows sortedArrayUsingComparator:^NSComparisonResult(UIWindow *w1, UIWindow *w2) {
         return [@(w2.windowLevel) compare:@(w1.windowLevel)];
     }]) {
         [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
     }
-    
+
     UIImage *screenshot = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    
+
     return UIImageJPEGRepresentation(screenshot, quality);
 }
+
 @end
