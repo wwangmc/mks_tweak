@@ -12,6 +12,8 @@
 - (void)captureFrame:(CADisplayLink *)link;
 - (void)stopStreaming;
 + (void)setScreenSize:(CGFloat)x height:(CGFloat) y;
++ (void)setScreenPTSize:(CGFloat)x height:(CGFloat) y;
++ (void)setScreenScale:(CGFloat) scale;
 + (int)getScreenOrientation;
 + (CGFloat)getScreenWidth;
 + (CGFloat)getScreenHeight;

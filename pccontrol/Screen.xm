@@ -11,20 +11,48 @@ OBJC_EXTERN kern_return_t IOSurfaceLock(IOSurfaceRef buffer, IOSurfaceLockOption
 OBJC_EXTERN kern_return_t IOSurfaceUnLock(IOSurfaceRef buffer, IOSurfaceLockOptions options, uint32_t *seed);
 OBJC_EXTERN IOSurfaceRef IOSurfaceCreate(CFDictionaryRef dictionary);
 OBJC_EXTERN CGImageRef UICreateCGImageFromIOSurface(IOSurfaceRef surface);
-
+// 像素高度及宽度
 static CGFloat device_screen_width = 0;
 static CGFloat device_screen_height = 0;
 
+// 实际高度及宽度
+static CGFloat device_screen_pt_width = 0;
+static CGFloat device_screen_pt_height = 0;
+
+static CGFloat device_screen_scale = 0;
 
 @implementation Screen
 {
     // device screen size
 }
 
++ (void)setScreenScale:(CGFloat) scale
+{
+	device_screen_scale = scale;
 
+	if (device_screen_scale == 0 || device_screen_scale > 10000)
+	{
+		NSLog(@"com.zjx.springboard: Unable to initialze the screen scale.");
+	}
+}
 /*
 Get the size of the screen and set them.
 */
++ (void)setScreenPTSize:(CGFloat)x height:(CGFloat) y
+{
+	device_screen_pt_width = x;
+	device_screen_pt_height = y;
+
+	if (device_screen_pt_width == 0 || device_screen_pt_height == 0 || device_screen_pt_width > 10000 || device_screen_pt_height > 10000)
+	{
+		NSLog(@"com.zjx.springboard: Unable to initialze the screen pt size. screen width: %f, screen height: %f", device_screen_pt_width, device_screen_pt_height);
+	}
+	else
+	{
+        [Screen setScreenSize:x*device_screen_scale height:y*device_screen_scale];
+	}
+}
+
 + (void)setScreenSize:(CGFloat)x height:(CGFloat) y
 {
 	device_screen_width = x;
@@ -36,7 +64,7 @@ Get the size of the screen and set them.
 	}
 	else
 	{
-		NSLog(@"com.zjx.springboard: successfully initialize the screen size. screen width: %f, screen height: %f", device_screen_width, device_screen_height);
+        NSLog(@"com.zjx.springboard: successfully initialize the screen size. screen width: %f, screen height: %f", device_screen_width, device_screen_height);
 	}
 }
 
@@ -79,7 +107,7 @@ Get the size of the screen and set them.
 
 + (CGFloat)getScale
 {    
-    return [[UIScreen mainScreen] scale];
+    return device_screen_scale;
 }
 
 + (CGRect)getBounds
@@ -115,13 +143,9 @@ Get the size of the screen and set them.
 
 
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality {
-    UIScreen *mainScreen = [UIScreen mainScreen];
-    CGFloat scale = mainScreen.scale;
-    CGRect screenRect = mainScreen.bounds;
-
     // 始终使用竖屏大小（即宽小高大）
-    CGSize portraitSize = CGSizeMake(MIN(screenRect.size.width, screenRect.size.height),
-                                     MAX(screenRect.size.width, screenRect.size.height));
+    CGSize portraitSize = CGSizeMake(device_screen_pt_width,
+                                     device_screen_pt_height);
     
     NSArray<UIWindow *> *windows = [[UIApplication sharedApplication] windows];
     NSMutableArray<UIWindow *> *visibleWindows = [NSMutableArray array];
@@ -132,7 +156,7 @@ Get the size of the screen and set them.
         }
     }
 
-    UIGraphicsBeginImageContextWithOptions(portraitSize, NO, scale);
+    UIGraphicsBeginImageContextWithOptions(portraitSize, NO, device_screen_scale);
     CGContextRef context = UIGraphicsGetCurrentContext();
 
     UIInterfaceOrientation orientation = [UIApplication sharedApplication].statusBarOrientation;

@@ -67,10 +67,12 @@ void startPopupListeningCallBack()
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         CGFloat screen_scale = [[UIScreen mainScreen] scale];
 
-        CGFloat width = [UIScreen mainScreen].bounds.size.width * screen_scale;
-        CGFloat height = [UIScreen mainScreen].bounds.size.height * screen_scale;
+        CGFloat width = [UIScreen mainScreen].bounds.size.width;
+        CGFloat height = [UIScreen mainScreen].bounds.size.height;
 
-        [Screen setScreenSize:(width<height?width:height) height:(width>height?width:height)];    
+        [Screen setScreenScale:screen_scale];    
+
+        [Screen setScreenPTSize:(width<height?width:height) height:(width>height?width:height)];    
 
         initSenderId();
         startPopupListeningCallBack();
