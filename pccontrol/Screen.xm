@@ -236,6 +236,33 @@ OBJC_EXTERN UIImage *_UICreateScreenUIImage(void);
     [UIImagePNGRepresentation(result) writeToFile:filePath atomically:NO];
     return filePath;
 }
+- (void)captureFrame:(CADisplayLink *)link {
+    if (!self.isStreaming) return;
+    
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            @autoreleasepool{
+            NSData *frameData = [Screen takeScreenshotWithQuality:0.3];
+
+            NSMutableData *chunk = [NSMutableData data];
+            [chunk appendData:[[NSString stringWithFormat:@"--boundary\r\nContent-Type: image/jpeg\r\nContent-Length: %lu\r\n\r\n", (unsigned long)frameData.length] dataUsingEncoding:NSUTF8StringEncoding]];
+            [chunk appendData:frameData];
+            [chunk appendData:[@"\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
+            
+            if (weakSelf.streamCompletionBlock) {
+                weakSelf.streamCompletionBlock(chunk, nil);
+            }
+        }
+    });
+}
+
+- (void)stopStreaming {
+    self.isStreaming = NO;
+    [self.displayLink invalidate];
+    self.displayLink = nil;
+}
+
+
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality {
     UIScreen *mainScreen = [UIScreen mainScreen];
     CGFloat scale = mainScreen.scale;
@@ -264,30 +291,5 @@ OBJC_EXTERN UIImage *_UICreateScreenUIImage(void);
     UIGraphicsEndImageContext();
     
     return UIImageJPEGRepresentation(screenshot, quality);
-}
-- (void)captureFrame:(CADisplayLink *)link {
-    if (!self.isStreaming) return;
-    
-    __weak typeof(self) weakSelf = self;
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            @autoreleasepool{
-            NSData *frameData = [Screen takeScreenshotWithQuality:0.3];
-
-            NSMutableData *chunk = [NSMutableData data];
-            [chunk appendData:[[NSString stringWithFormat:@"--boundary\r\nContent-Type: image/jpeg\r\nContent-Length: %lu\r\n\r\n", (unsigned long)frameData.length] dataUsingEncoding:NSUTF8StringEncoding]];
-            [chunk appendData:frameData];
-            [chunk appendData:[@"\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
-            
-            if (weakSelf.streamCompletionBlock) {
-                weakSelf.streamCompletionBlock(chunk, nil);
-            }
-        }
-    });
-}
-
-- (void)stopStreaming {
-    self.isStreaming = NO;
-    [self.displayLink invalidate];
-    self.displayLink = nil;
 }
 @end
