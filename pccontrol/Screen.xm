@@ -143,6 +143,22 @@ Get the size of the screen and set them.
 
 
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality {
+ 
+    CGSize portraitSize = CGSizeMake(device_screen_pt_width,
+                                    device_screen_pt_height);
+    UIGraphicsBeginImageContextWithOptions(portraitSize, NO, device_screen_scale);
+    
+    for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
+        [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
+    }
+    
+    UIImage *screenshot = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    return UIImageJPEGRepresentation(screenshot, quality);
+}
+/* ios13不适用
++ (NSData *)takeScreenshotWithQuality:(CGFloat)quality {
     // 始终使用竖屏大小（即宽小高大）
     CGSize portraitSize = CGSizeMake(device_screen_pt_width,
                                      device_screen_pt_height);
@@ -184,5 +200,5 @@ Get the size of the screen and set them.
 
     return UIImageJPEGRepresentation(screenshot, quality);
 }
-
+*/
 @end

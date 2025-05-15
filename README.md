@@ -1,20 +1,53 @@
-获取截屏
-GET http://{ip}:8081/screenshot
+可搭配iproxy实现usb有线传输 命令iproxy 8081:8081 以下api的ipHost可全替换localhost iproxy有依赖环境具体上网搜 一般装完爱思就有
+
+[获取截屏] quality图片质量越低越差但会更流畅
+GET http://{ip}:8081/screenshot?quality=0.3
 
 
-写入内容至剪切板（需要剪切板中已有内容）
+[输入文本]
+POST http://{ip}:8081/input
+{
+    "text": "nb666"
+}
+
+[执行命令] （可搭配curl查询ip）(可搭配 uiopen命令实现打开url)
+POST http://{ip}:8081/runShell
+{
+	"cmd": "ls /var"
+}
+
+[切换app]
+GET http://{ip}:8081/switchApp?pkgName=com.liguangming.Shadowrocket
+
+[home键]
+GET http://{ip}:8081/pressHome
+
+[双击home](切换出应用列表视图)
+GET http://{ip}:8081/doublePressHome
+
+[获取应用沙盒目录]
+GET http://{ip}:8081/sandboxPath?pkgName=com.liguangming.Shadowrocket
+
+[获取剪切板内容]
+GET http://{ip}:8081/getClip
+
+[写入内容至剪切板](需要剪切板中已有内容) {没啥用要输入就用上面的input}
 POST http://{ip}:8081/setClip
 {
   "text": "3838测试11"
 }
 
+[关闭键盘]
+GET http://{ip}:8081/hideKeyboard
 
 
-获取剪切板内容
-GET http://{ip}:8081/getClip
+[移动光标](负数左移 正数右移)
+GET http://{ip}:8081/moveCursor?num=-2
 
+[删除文本]
+GET http://{ip}:8081/del?num=2
 
-弹窗
+[弹窗]
 POST http://{ip}:8081/alert
 {
   "title": "success",
@@ -22,7 +55,7 @@ POST http://{ip}:8081/alert
   "time": 2.5
 }
 
-悬浮窗 
+[悬浮窗] 
 POST http://{ip}:8081/toast
 {
 	"type": "success",
@@ -32,19 +65,15 @@ POST http://{ip}:8081/toast
 	"fontSize": 16                  
 }
 
-获取设备信息（type可选 1屏幕大小 2屏幕处于横屏或竖屏 3screen scale 30 设备信息 型号版本等 31电池信息）
+[获取设备信息]（type可选 1屏幕大小 2屏幕处于横屏或竖屏 3 screen scale 30 设备信息 型号版本等 31 电池信息）
 GET http://{ip}:8081/deviceInfo?type=1
 
-执行命令 （可搭配curl查询ip）(可搭配 uiopen命令实现打开url)
-POST http://{ip}:8081/runShell
-{
-	"cmd": "ls /var"
-}
 
-点击事件(
-	#define TOUCH_UP 0
-	#define TOUCH_DOWN 1
-	#define TOUCH_MOVE 2
+[点击事件](
+	type可选 
+	up 松开 
+	down 按下
+	move 移动
 )
 POST http://{ip}:8081/touch
 {
@@ -54,29 +83,4 @@ POST http://{ip}:8081/touch
 	"type": "down"
 }
 
-获取应用沙盒目录
-GET http://{ip}:8081/sandboxPath?pkgName=com.liguangming.Shadowrocket
 
-切换app
-GET http://{ip}:8081/switchApp?pkgName=com.liguangming.Shadowrocket
-
-关闭键盘
-GET http://{ip}:8081/hideKeyboard
-
-输入文本
-POST http://{ip}:8081/input
-{
-    "text": "nb666"
-}
-
-移动光标(负数左移 正数右移)
-GET http://{ip}:8081/moveCursor?num=-2
-
-删除文本
-GET http://{ip}:8081/del?num=2
-
-home键
-GET http://{ip}:8081/pressHome
-
-双击home
-GET http://{ip}:8081/doublePressHome
