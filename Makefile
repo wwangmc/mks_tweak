@@ -17,5 +17,5 @@ include $(THEOS)/makefiles/common.mk
 
 SUBPROJECTS += pccontrol
 SUBPROJECTS += appdelegate
-SUBPROJECTS += StoreSwitcher
+SUBPROJECTS += StoreSwitcher2
 include $(THEOS_MAKE_PATH)/aggregate.mk
