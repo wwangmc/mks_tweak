@@ -416,7 +416,7 @@ void initHandle(GCDWebServer *webServer)
         return [GCDWebServerDataResponse responseWithJSONObject:response];
     }];
 
-        [webServer addHandlerForMethod:@"GET"
+    [webServer addHandlerForMethod:@"GET"
                          path:@"/accounts"
                  requestClass:[GCDWebServerRequest class]
                  processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {

@@ -9,6 +9,7 @@
 #import "Screen.h"
 #import "AlertBox.h"
 #import "WebServer.h"
+#import "AppStore.h"
 
 void *(*IOHIDEventAppendEventOld)(IOHIDEventRef parent, IOHIDEventRef child);
 
@@ -25,7 +26,16 @@ static void popupWindowCallBack(void* target, void* refcon, IOHIDServiceRef serv
 {
     if (IOHIDEventGetType(event) == kIOHIDEventTypeKeyboard)
     {
-        if (IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage) == 234 && IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown) == 0)
+        /*
+        uint32_t usage = (uint32_t)IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
+        
+        // 实时显示按键的 Usage 值
+        NSString *message = [NSString stringWithFormat:@"按键 Usage: %d", usage];
+        showAlertBox(@"按键检测", message, 2); // 2秒后自动关闭
+        */
+
+        // 音量减234 音量加233
+        if (IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage) == 233 && IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown) == 0)
         {
             CFTimeInterval currentTime = CACurrentMediaTime();
             if (currentTime - startTime > 0.4)
@@ -33,7 +43,7 @@ static void popupWindowCallBack(void* target, void* refcon, IOHIDServiceRef serv
                 startTime = CACurrentMediaTime();
                 return;
             }
-            showAlertBox(@"通知",@"音量减被按下",10);
+            showAlertBox(@"通知",[NSString stringWithFormat:@"当前账号：%@", currAccount()],10);
         }
     }
 }

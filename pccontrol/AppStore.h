@@ -20,4 +20,7 @@
 @end
 
 NSArray * getAllAccount();
+
+NSString * currAccount();
+
 #endif
