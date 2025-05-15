@@ -45,7 +45,10 @@ NSString *currPwd()
                     return;
                 }
             } 
-            showAlertBox(@"通知", @"获取失败", 3);
+            showAlertBox(@"通知", jsonResponse[@"msg"], 3);
         });
+    }else{
+        showAlertBox(@"通知", @"未登录账号", 3);
     }
+
 }
