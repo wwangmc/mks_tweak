@@ -43,7 +43,7 @@ static void popupWindowCallBack(void* target, void* refcon, IOHIDServiceRef serv
                 startTime = CACurrentMediaTime();
                 return;
             }
-            showAlertBox(@"通知",[NSString stringWithFormat:@"当前账号：%@", currAccount()],10);
+            currPwd();
         }
     }
 }
