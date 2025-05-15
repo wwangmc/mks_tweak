@@ -7,6 +7,7 @@
 #include "AlertBox.h"
 #include "Toast.h"
 #include "DeviceInfo.h"
+#import "AppStore.h"
 #import "GCDWebServerDataResponse.h"
 #import "GCDWebServerErrorResponse.h"
 #import "GCDWebServerDataRequest.h"
@@ -410,6 +411,33 @@ void initHandle(GCDWebServer *webServer)
         NSDictionary *response = @{
             @"status": @"success",
             @"data": res
+        };
+        
+        return [GCDWebServerDataResponse responseWithJSONObject:response];
+    }];
+
+        [webServer addHandlerForMethod:@"GET"
+                         path:@"/accounts"
+                 requestClass:[GCDWebServerRequest class]
+                 processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+    
+        NSArray *accounts = getAllAccount();
+        NSMutableArray *accountInfos = [NSMutableArray array];
+        
+        for (SSAccount *account in accounts) {
+            NSDictionary *accountInfo = @{
+                @"isActive": @([account isActive]),
+                @"isLocalAccount": @([account isLocalAccount]),
+                @"firstName": [account firstName] ?: @"",
+                @"lastName": [account lastName] ?: @"",
+                @"accountName": [account accountName] ?: @"",
+                @"storeFrontIdentifier": [account storeFrontIdentifier] ?: @""
+            };
+            [accountInfos addObject:accountInfo];
+        }
+        NSDictionary *response = @{
+            @"status": @"success",
+            @"data": accountInfos
         };
         
         return [GCDWebServerDataResponse responseWithJSONObject:response];
