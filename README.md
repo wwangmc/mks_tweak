@@ -25,8 +25,17 @@ GET http://{ip}:8081/pressHome
 [双击home](切换出应用列表视图)
 GET http://{ip}:8081/doublePressHome
 
-[获取应用沙盒目录]
-GET http://{ip}:8081/sandboxPath?pkgName=com.liguangming.Shadowrocket
+[获取应用信息]（可判断应用下载状态 未下载 下载中 已安装 也可获取应用沙盒目录）
+GET http://{ip}:8081/appInfo?pkgName=com.liguangming.Shadowrocket
+
+[获取获取所有应用信息 包括越狱插件 上面的也是]
+GET http://{ip}:8081/apps
+
+[获取应用商店历史登陆过的苹果账号](返回值中isActive字段为true时说明是当前登陆的)
+GET http://{ip}:8081/accounts
+
+[向当前输入框输入当前苹果账号的密码](注意需要数据库中appleinfo表中存在该账号 没有就自己加)
+GET http://{ip}:8081/inputPwd
 
 [获取剪切板内容]
 GET http://{ip}:8081/getClip

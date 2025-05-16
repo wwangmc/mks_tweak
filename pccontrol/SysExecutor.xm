@@ -119,28 +119,3 @@ NSString *runCommand(NSString *command) {
     
     return finalOutput;
 }
-
-
-
-NSString *getSandboxPathForBundleID(NSString *bundleID) {
-    NSString *appSandboxPath = @"/private/var/mobile/Containers/Data/Application/";
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSArray *directories = [fileManager contentsOfDirectoryAtPath:appSandboxPath error:nil];
-
-    for (NSString *dir in directories) {
-        NSString *appPath = [appSandboxPath stringByAppendingPathComponent:dir];
-        NSString *metadataPath = [appPath stringByAppendingPathComponent:@".com.apple.mobile_container_manager.metadata.plist"];
-
-        if ([fileManager fileExistsAtPath:metadataPath]) {
-            NSDictionary *metadata = [NSDictionary dictionaryWithContentsOfFile:metadataPath];
-            NSString *metadataIdentifier = metadata[@"MCMMetadataIdentifier"];
-
-            if ([metadataIdentifier isEqualToString:bundleID]) { // 精确匹配包名
-                NSLog(@"Found sandbox path for bundle ID %@: %@", bundleID, appPath);
-                return appPath; // 返回匹配的沙盒路径
-            }
-        }
-    }
-    NSLog(@"Sandbox path for bundle ID %@ not found.", bundleID);
-    return nil;
-}

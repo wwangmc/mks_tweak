@@ -1,13 +1,14 @@
-#include "WebServer.h"
-#include "Screen.h"
-#include "Touch.h"
-#include <Foundation/NSDistributedNotificationCenter.h>
+#import "WebServer.h"
+#import "Screen.h"
+#import "Touch.h"
+#import <Foundation/NSDistributedNotificationCenter.h>
 #import "SysExecutor.h"
-#include "Process.h"
-#include "AlertBox.h"
-#include "Toast.h"
-#include "DeviceInfo.h"
+#import "Process.h"
+#import "AlertBox.h"
+#import "Toast.h"
+#import "DeviceInfo.h"
 #import "AppStore.h"
+#import "Application.h"
 #import "GCDWebServerDataResponse.h"
 #import "GCDWebServerErrorResponse.h"
 #import "GCDWebServerDataRequest.h"
@@ -395,27 +396,7 @@ void initHandle(GCDWebServer *webServer)
         return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
     }];
 
-    // 获取应用沙盒目录
-    [webServer addHandlerForMethod:@"GET"
-                         path:@"/sandboxPath"
-                 requestClass:[GCDWebServerRequest class]
-                 processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-    
-        NSString *pkgName = request.query[@"pkgName"];
-        
-        if (!pkgName) {
-            return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
-                                                        message:@"Missing 'pkgName' parameter"];
-        }
-        NSString *res = getSandboxPathForBundleID(pkgName);
-        NSDictionary *response = @{
-            @"status": @"success",
-            @"data": res
-        };
-        
-        return [GCDWebServerDataResponse responseWithJSONObject:response];
-    }];
-
+    // 获取所有登录过的苹果账号
     [webServer addHandlerForMethod:@"GET"
                          path:@"/accounts"
                  requestClass:[GCDWebServerRequest class]
@@ -441,5 +422,49 @@ void initHandle(GCDWebServer *webServer)
         };
         
         return [GCDWebServerDataResponse responseWithJSONObject:response];
+    }];
+
+    // 输入当前苹果账号的密码
+    [webServer addHandlerForMethod:@"GET"
+                        path:@"/inputPwd"
+                requestClass:[GCDWebServerRequest class]
+                processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+    
+        currPwd();
+
+        NSDictionary *response = @{
+            @"status": @"success",
+            @"data": @""
+        };
+        
+        return [GCDWebServerDataResponse responseWithJSONObject:response];
+    }];
+
+    // 获取所有应用信息
+    [webServer addHandlerForMethod:@"GET" path:@"/apps" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSMutableArray *appsArray = getAllApplication();
+        NSDictionary *jsonData = @{
+            @"status": @"success",
+            @"applications": appsArray
+        };
+        
+        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+    }];
+    // 获取应用信息
+    [webServer addHandlerForMethod:@"GET" path:@"/appInfo" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+            
+        NSString *pkgName = request.query[@"pkgName"];
+        
+        if (!pkgName) {
+            return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
+                                                        message:@"Missing 'pkgName' parameter"];
+        }
+        NSDictionary *appInfo = getApplication(pkgName);
+        NSDictionary *jsonData = @{
+            @"status": @"success",
+            @"info": appInfo
+        };
+        
+        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
     }];
 }
