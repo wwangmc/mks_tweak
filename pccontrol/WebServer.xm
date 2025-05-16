@@ -467,4 +467,21 @@ void initHandle(GCDWebServer *webServer)
         
         return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
     }];
+
+    // 卸载应用
+    [webServer addHandlerForMethod:@"GET" path:@"/uninstall" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+            
+        NSString *pkgName = request.query[@"pkgName"];
+        
+        if (!pkgName) {
+            return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
+                                                        message:@"Missing 'pkgName' parameter"];
+        }
+        BOOL success = uninstall(pkgName);
+        NSDictionary *jsonData = @{
+            @"status": success?@"success":@"fail"
+        };
+        
+        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+    }];
 }
