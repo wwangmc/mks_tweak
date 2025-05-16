@@ -19,6 +19,9 @@ POST http://{ip}:8081/runShell
 [切换app]
 GET http://{ip}:8081/switchApp?pkgName=com.liguangming.Shadowrocket
 
+[卸载应用]
+GET http://{ip}:8081/uninstall?pkgName=com.liguangming.Shadowrocket
+
 [home键]
 GET http://{ip}:8081/pressHome
 

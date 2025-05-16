@@ -46,7 +46,7 @@ NSDictionary * getApplication(NSString *bundleId)
 BOOL uninstall(NSString *bundleId)
 {
     LSApplicationProxy* appProxy = [LSApplicationProxy applicationProxyForIdentifier:bundleId];
-    if(!appProxy){
+    if(!appProxy || !appProxy.isInstalled){
         NSLog(@"应用未安装");
         showAlertBox(@"卸载结果",@"应用未安装",2);
         return true;
