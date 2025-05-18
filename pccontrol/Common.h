@@ -26,10 +26,7 @@
 int getRandomNumberInt(int min, int max);
 float getRandomNumberFloat(float min, float max);
 NSString* getDocumentRoot();
-void swapCGFloat(CGFloat *a, CGFloat *b);
-pid_t system2(const char * command, int * infp, int * outfp);
 int roundUp(int numToRound, int multiple);
 Boolean isIpad();
-NSString* getDeviceName();
 
 #endif

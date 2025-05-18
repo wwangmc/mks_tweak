@@ -71,23 +71,21 @@ void startPopupListeningCallBack()
 - (void)applicationDidFinishLaunching:(id)arg1
 {
     %orig;
+    CGFloat screen_scale = [[UIScreen mainScreen] scale];
+
+    CGFloat width = [UIScreen mainScreen].bounds.size.width;
+    CGFloat height = [UIScreen mainScreen].bounds.size.height;
+
+    [Screen setScreenScale:screen_scale];    
+
+    [Screen setScreenPTSize:(width<height?width:height) height:(width>height?width:height)];  
+    initSenderId();
+    // init touch screensize. Temporarily put this line here. Will be removed.
+    initTouchGetScreenSize();
+
     startWebServer();
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        CGFloat screen_scale = [[UIScreen mainScreen] scale];
-
-        CGFloat width = [UIScreen mainScreen].bounds.size.width;
-        CGFloat height = [UIScreen mainScreen].bounds.size.height;
-
-        [Screen setScreenScale:screen_scale];    
-
-        [Screen setScreenPTSize:(width<height?width:height) height:(width>height?width:height)];    
-
-        initSenderId();
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{  
         startPopupListeningCallBack();
-
-        // init touch screensize. Temporarily put this line here. Will be removed.
-        initTouchGetScreenSize();
-        
         CFRunLoopRun();
     });
 

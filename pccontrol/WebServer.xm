@@ -15,11 +15,6 @@
 #import "GCDWebServerStreamedResponse.h"
 #import "Switcher.h"
 
-static GCDWebServerDataResponse* staticSuccessResponse;
-
-static GCDWebServerErrorResponse* missingParamResponse;
-
-static GCDWebServerErrorResponse* jsonFormatErrorResponse;
 
 
 NSDictionary* getJsonBody(GCDWebServerDataRequest *request,NSError *jsonError)
@@ -28,19 +23,31 @@ NSDictionary* getJsonBody(GCDWebServerDataRequest *request,NSError *jsonError)
                                                         options:kNilOptions
                                                             error:&jsonError];
 }
-
-void startWebServer()
-{    
+GCDWebServerDataResponse* staticSuccessResponse()
+{
     NSDictionary *jsonData = @{
         @"status": @"success"
     };
     // 通用返回初始化
-    staticSuccessResponse = [GCDWebServerDataResponse responseWithJSONObject:jsonData];
-
-    missingParamResponse = [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
+    return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+}
+GCDWebServerErrorResponse* missingParamResponse()
+{
+    return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
                                                         message:@"Missing parameter"];
-    jsonFormatErrorResponse = [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
+}
+GCDWebServerErrorResponse* jsonFormatErrorResponse()
+{
+    return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
                                                             message:@"Invalid JSON"];
+}
+
+void startWebServer()
+{    
+
+
+    
+
     GCDWebServer *webServer = [[GCDWebServer alloc] init];
     initHandle(webServer);    
     [webServer startWithPort:WEB_PORT bonjourName:nil];
@@ -53,7 +60,7 @@ void initHandle(GCDWebServer *webServer)
     [webServer addHandlerForMethod:@"GET" path:@"/screenshot" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         NSString *quality = request.query[@"quality"];
         if(!quality){
-              return missingParamResponse;
+              return missingParamResponse();
         }
         float floatValue = [quality floatValue];
 
@@ -72,7 +79,7 @@ void initHandle(GCDWebServer *webServer)
         NSString *fpsStr = request.query[@"fps"];
         
         if (!quality || !fpsStr) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         
         float floatValue = [quality floatValue];
@@ -111,19 +118,19 @@ void initHandle(GCDWebServer *webServer)
     // 按下home键
     [webServer addHandlerForMethod:@"GET" path:@"/pressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         pressHome();
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
     // 双击home
     [webServer addHandlerForMethod:@"GET" path:@"/doublePressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         doublePressHome();
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
     // 隐藏键盘
     [webServer addHandlerForMethod:@"GET" path:@"/hideKeyboard" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(2), @"task_content": @(1)} deliverImmediately: true];
        
         // 返回 JSON 格式数据
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
     // 输入文本
     [webServer addHandlerForMethod:@"POST"
@@ -134,17 +141,17 @@ void initHandle(GCDWebServer *webServer)
         NSError *jsonError;
         NSDictionary *jsonBody = getJsonBody(request,jsonError);
         if (jsonError) {
-            return jsonFormatErrorResponse;
+            return jsonFormatErrorResponse();
         }
         
         NSString *text = jsonBody[@"text"];
         
         if (!text) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(1), @"task_content": text} deliverImmediately: true];
 
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
 
     // 执行命令
@@ -156,14 +163,14 @@ void initHandle(GCDWebServer *webServer)
         NSError *jsonError;
         NSDictionary *jsonBody = getJsonBody(request,jsonError);
         if (jsonError) {
-            return jsonFormatErrorResponse;
+            return jsonFormatErrorResponse();
         }
         
         
         NSString *cmd = jsonBody[@"cmd"];
         
         if (!cmd) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         NSString *res = runCommand(cmd);
         return [GCDWebServerDataResponse responseWithJSONObject:@{
@@ -181,12 +188,12 @@ void initHandle(GCDWebServer *webServer)
         NSString *num = request.query[@"num"];
         
         if (!num) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         
         [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(4), @"task_content": num} deliverImmediately: true];
 
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
 
     // 移动光标
@@ -198,12 +205,12 @@ void initHandle(GCDWebServer *webServer)
         NSString *num = request.query[@"num"];
         
         if (!num) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         
         [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(3), @"task_content": num} deliverImmediately: true];
    
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
 
     // 切换应用
@@ -215,10 +222,10 @@ void initHandle(GCDWebServer *webServer)
         NSString *pkgName = request.query[@"pkgName"];
         
         if (!pkgName) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         bringAppForeground(pkgName);
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
 
     //点击某个坐标
@@ -230,7 +237,7 @@ void initHandle(GCDWebServer *webServer)
         NSError *jsonError;
         NSDictionary *jsonBody = getJsonBody(request,jsonError);
         if (jsonError) {
-            return jsonFormatErrorResponse;
+            return jsonFormatErrorResponse();
         }
         
         NSError *error = nil;
@@ -240,7 +247,7 @@ void initHandle(GCDWebServer *webServer)
                                                             message:@"点击异常"];
         }
 
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
 
     //获取设备信息
@@ -252,7 +259,7 @@ void initHandle(GCDWebServer *webServer)
         NSString *type = request.query[@"type"];
         
         if (!type) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         NSError *err = nil;
         int intValue = [type intValue];
@@ -278,7 +285,7 @@ void initHandle(GCDWebServer *webServer)
         NSError *jsonError;
         NSDictionary *jsonBody = getJsonBody(request,jsonError);
         if (jsonError) {
-            return jsonFormatErrorResponse;
+            return jsonFormatErrorResponse();
         }
         
         
@@ -288,7 +295,7 @@ void initHandle(GCDWebServer *webServer)
             return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
                                                 message:@"发生异常"];
         }
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
 
     // 弹窗
@@ -300,7 +307,7 @@ void initHandle(GCDWebServer *webServer)
         NSError *jsonError;
         NSDictionary *jsonBody = getJsonBody(request,jsonError);
         if (jsonError) {
-            return jsonFormatErrorResponse;
+            return jsonFormatErrorResponse();
         }
         
         NSString *title = jsonBody[@"title"];
@@ -308,11 +315,11 @@ void initHandle(GCDWebServer *webServer)
         NSInteger time = [jsonBody[@"time"] integerValue];
 
         if (!text||!title||!time) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         
         showAlertBox(title,text,time);        
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
     
     // 设置剪切板内容
@@ -324,14 +331,14 @@ void initHandle(GCDWebServer *webServer)
         NSError *jsonError;
         NSDictionary *jsonBody = getJsonBody(request,jsonError);
         if (jsonError) {
-            return jsonFormatErrorResponse;
+            return jsonFormatErrorResponse();
         }
         
         
         NSString *text = jsonBody[@"text"];
         
         if (!text) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
         if (pasteboard.string){
@@ -340,7 +347,7 @@ void initHandle(GCDWebServer *webServer)
             return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
                                                 message:@"操作剪切板失败，请先随便找个东西复制一下"];
         }
-         return staticSuccessResponse;
+         return staticSuccessResponse();
     }];
 
     //获取剪切板内容
@@ -396,7 +403,7 @@ void initHandle(GCDWebServer *webServer)
     
         currPwd();
      
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
 
     // 获取所有应用信息
@@ -415,7 +422,7 @@ void initHandle(GCDWebServer *webServer)
         NSString *pkgName = request.query[@"pkgName"];
         
         if (!pkgName) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         NSDictionary *appInfo = getApplication(pkgName);
         NSDictionary *jsonData = @{
@@ -432,7 +439,7 @@ void initHandle(GCDWebServer *webServer)
         NSString *pkgName = request.query[@"pkgName"];
         
         if (!pkgName) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         BOOL success = uninstall(pkgName);
         NSDictionary *jsonData = @{
@@ -448,11 +455,11 @@ void initHandle(GCDWebServer *webServer)
         NSString *pkgName = request.query[@"pkgName"];
         
         if (!pkgName) {
-            return missingParamResponse;
+            return missingParamResponse();
         }
         killByBID(pkgName);
         
-        return staticSuccessResponse;
+        return staticSuccessResponse();
     }];
 
     // 清理所有后台
