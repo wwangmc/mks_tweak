@@ -41,46 +41,51 @@ void initHandle(GCDWebServer *webServer)
 
     // 流式截图接口
     [webServer addHandlerForMethod:@"GET"
-                     path:@"/screenshotStream"
-             requestClass:[GCDWebServerRequest class]
-             processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+                            path:@"/screenshotStream"
+                    requestClass:[GCDWebServerRequest class]
+                    processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         
         NSString *quality = request.query[@"quality"];
-        if (!quality) {
+        NSString *fpsStr = request.query[@"fps"];
+        
+        if (!quality || !fpsStr) {
             return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
-                                                            message:@"Missing quality"];
+                                                            message:@"Missing quality or fps"];
         }
+        
         float floatValue = [quality floatValue];
-        GCDWebServerStreamedResponse* response = [[GCDWebServerStreamedResponse alloc]
-            initWithContentType:@"multipart/x-mixed-replace; boundary=--frame"
-            asyncStreamBlock:^void(GCDWebServerBodyReaderCompletionBlock completionBlock) {
-
-            // 创建 MJPEG 帧
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                @autoreleasepool {
-                    NSData* imageData = [Screen takeScreenshotWithQuality:floatValue];
-                    if (!imageData) {
-                        NSError* error = [NSError errorWithDomain:@"screenshot" code:500 userInfo:nil];
-                        completionBlock(nil, error);
-                        return;
-                    }
-
-                    NSMutableData* frameData = [NSMutableData data];
-                    [frameData appendData:[@"--frame\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
-                    [frameData appendData:[@"Content-Type: image/jpeg\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
-                    NSString* contentLength = [NSString stringWithFormat:@"Content-Length: %lu\r\n\r\n", (unsigned long)imageData.length];
-                    [frameData appendData:[contentLength dataUsingEncoding:NSUTF8StringEncoding]];
-                    [frameData appendData:imageData];
-                    [frameData appendData:[@"\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
-
-                    completionBlock(frameData, nil);
+        int fps = [fpsStr intValue];
+        if (fps <= 0 || fps > 60) fps = 10; // 安全兜底，限制范围
+        
+        int sleepTimeMicroseconds = 1000000 / fps; // 帧间隔时间 usleep 用微秒
+        
+        GCDWebServerStreamedResponse* response = [GCDWebServerStreamedResponse
+            responseWithContentType:@"multipart/x-mixed-replace; boundary=--frame"
+                        streamBlock:^NSData* (NSError** error) {
+            
+            @autoreleasepool {
+                NSData* imageData = [Screen takeScreenshotWithQuality:floatValue];
+                if (!imageData) {
+                    if (error) *error = [NSError errorWithDomain:@"screenshot" code:500 userInfo:nil];
+                    return nil;
                 }
-            });
-        }];
 
+                NSMutableData* frame = [NSMutableData data];
+                [frame appendData:[@"--frame\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
+                [frame appendData:[@"Content-Type: image/jpeg\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
+                NSString* header = [NSString stringWithFormat:@"Content-Length: %lu\r\n\r\n", (unsigned long)imageData.length];
+                [frame appendData:[header dataUsingEncoding:NSUTF8StringEncoding]];
+                [frame appendData:imageData];
+                [frame appendData:[@"\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
+
+                usleep(sleepTimeMicroseconds); // ⏱ 控制帧率
+                return frame;
+            }
+        }];
+        
         return response;
     }];
-    
+
 
     // 按下home键
     [webServer addHandlerForMethod:@"GET" path:@"/pressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {

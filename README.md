@@ -4,7 +4,7 @@
 GET http://{ip}:8081/screenshot?quality=0.3
 
 [获取截屏流式返回]
-GET http://{ip}:8081/screenshotStream?quality=0.3
+GET http://{ip}:8081/screenshotStream?quality=0.3&fps=15
 
 
 [输入文本]
