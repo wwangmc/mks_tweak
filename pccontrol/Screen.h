@@ -1,16 +1,9 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 #import <UIKit/UIKit.h>
-#import <QuartzCore/QuartzCore.h> // 用于 CADisplayLink
 #include "GCDWebServerStreamedResponse.h"
 
 @interface Screen :NSObject
-@property (nonatomic, strong) CADisplayLink *displayLink;
-@property (nonatomic, assign) BOOL isStreaming;
-@property (nonatomic, copy) GCDWebServerBodyReaderCompletionBlock streamCompletionBlock;
-
-- (void)captureFrame:(CADisplayLink *)link;
-- (void)stopStreaming;
 + (void)setScreenSize:(CGFloat)x height:(CGFloat) y;
 + (void)setScreenPTSize:(CGFloat)x height:(CGFloat) y;
 + (void)setScreenScale:(CGFloat) scale;

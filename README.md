@@ -3,6 +3,9 @@
 [获取截屏] quality图片质量越低越差但会更流畅
 GET http://{ip}:8081/screenshot?quality=0.3
 
+[获取截屏流式返回]
+GET http://{ip}:8081/screenshotStream?quality=0.3
+
 
 [输入文本]
 POST http://{ip}:8081/input
@@ -21,6 +24,13 @@ GET http://{ip}:8081/switchApp?pkgName=com.liguangming.Shadowrocket
 
 [卸载应用]
 GET http://{ip}:8081/uninstall?pkgName=com.liguangming.Shadowrocket
+
+[关闭后台应用](模拟app switcher视图滑掉应用 回到桌面再调用才能看到视图中找不到应用 不回桌面也能正常关闭)
+GET http://{ip}:8081/killByBID?pkgName=com.liguangming.Shadowrocket
+
+[关闭所有后台应用](模拟app switcher视图滑掉应用 post参数为排除在外的应用不传就全关)
+POST http://{ip}:8081/killAll
+["com.liguangming.Shadowrocket"]
 
 [home键]
 GET http://{ip}:8081/pressHome

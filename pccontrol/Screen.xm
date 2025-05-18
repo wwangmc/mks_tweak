@@ -6,11 +6,6 @@
 #import "headers/IOSurface/IOSurface.h"
 #include "headers/IOSurface/CoreSurface.h"
 
-OBJC_EXTERN void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef surface, int x, int y);
-OBJC_EXTERN kern_return_t IOSurfaceLock(IOSurfaceRef buffer, IOSurfaceLockOptions options, uint32_t *seed);
-OBJC_EXTERN kern_return_t IOSurfaceUnLock(IOSurfaceRef buffer, IOSurfaceLockOptions options, uint32_t *seed);
-OBJC_EXTERN IOSurfaceRef IOSurfaceCreate(CFDictionaryRef dictionary);
-OBJC_EXTERN CGImageRef UICreateCGImageFromIOSurface(IOSurfaceRef surface);
 // 像素高度及宽度
 static CGFloat device_screen_width = 0;
 static CGFloat device_screen_height = 0;
@@ -115,35 +110,9 @@ Get the size of the screen and set them.
     return [UIScreen mainScreen].bounds;
 }
 
-- (void)captureFrame:(CADisplayLink *)link {
-    if (!self.isStreaming) return;
-    
-    __weak typeof(self) weakSelf = self;
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            @autoreleasepool{
-            NSData *frameData = [Screen takeScreenshotWithQuality:0.3];
-
-            NSMutableData *chunk = [NSMutableData data];
-            [chunk appendData:[[NSString stringWithFormat:@"--boundary\r\nContent-Type: image/jpeg\r\nContent-Length: %lu\r\n\r\n", (unsigned long)frameData.length] dataUsingEncoding:NSUTF8StringEncoding]];
-            [chunk appendData:frameData];
-            [chunk appendData:[@"\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
-            
-            if (weakSelf.streamCompletionBlock) {
-                weakSelf.streamCompletionBlock(chunk, nil);
-            }
-        }
-    });
-}
-
-- (void)stopStreaming {
-    self.isStreaming = NO;
-    [self.displayLink invalidate];
-    self.displayLink = nil;
-}
-
 
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality {
- 
+    NSLog(@"take a screenshot");
     CGSize portraitSize = CGSizeMake(device_screen_pt_width,
                                     device_screen_pt_height);
     UIGraphicsBeginImageContextWithOptions(portraitSize, NO, device_screen_scale);

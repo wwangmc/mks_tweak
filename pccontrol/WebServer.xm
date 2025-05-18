@@ -40,31 +40,47 @@ void initHandle(GCDWebServer *webServer)
     }];
 
     // 流式截图接口
-     [webServer addHandlerForMethod:@"GET"
-                             path:@"/live_screenshot"
-                     requestClass:[GCDWebServerRequest class]
-                     processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        Screen *screen = [Screen new];
+    [webServer addHandlerForMethod:@"GET"
+                     path:@"/screenshotStream"
+             requestClass:[GCDWebServerRequest class]
+             processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        
+        NSString *quality = request.query[@"quality"];
+        if (!quality) {
+            return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
+                                                            message:@"Missing quality"];
+        }
+        float floatValue = [quality floatValue];
+        GCDWebServerStreamedResponse* response = [[GCDWebServerStreamedResponse alloc]
+            initWithContentType:@"multipart/x-mixed-replace; boundary=--frame"
+            asyncStreamBlock:^void(GCDWebServerBodyReaderCompletionBlock completionBlock) {
 
-        GCDWebServerStreamedResponse *response = 
-            [GCDWebServerStreamedResponse responseWithContentType:@"multipart/x-mixed-replace; boundary=boundary"
-                                               asyncStreamBlock:^(GCDWebServerBodyReaderCompletionBlock completionBlock) {
+            // 创建 MJPEG 帧
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                @autoreleasepool {
+                    NSData* imageData = [Screen takeScreenshotWithQuality:floatValue];
+                    if (!imageData) {
+                        NSError* error = [NSError errorWithDomain:@"screenshot" code:500 userInfo:nil];
+                        completionBlock(nil, error);
+                        return;
+                    }
 
-            screen.isStreaming = YES;
-            screen.streamCompletionBlock = completionBlock;
-            
-            screen.displayLink = [CADisplayLink displayLinkWithTarget:screen selector:@selector(captureFrame:)];
-            [screen.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
-            screen.displayLink.preferredFramesPerSecond = 20; // 10 FPS
+                    NSMutableData* frameData = [NSMutableData data];
+                    [frameData appendData:[@"--frame\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
+                    [frameData appendData:[@"Content-Type: image/jpeg\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
+                    NSString* contentLength = [NSString stringWithFormat:@"Content-Length: %lu\r\n\r\n", (unsigned long)imageData.length];
+                    [frameData appendData:[contentLength dataUsingEncoding:NSUTF8StringEncoding]];
+                    [frameData appendData:imageData];
+                    [frameData appendData:[@"\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
+
+                    completionBlock(frameData, nil);
+                }
+            });
         }];
-        
-        // 客户端断开时停止流
-        /*response.connectionDidCloseBlock  = ^{
-            [screen stopStreaming];
-        };*/
-        
+
         return response;
     }];
+    
 
     // 按下home键
     [webServer addHandlerForMethod:@"GET" path:@"/pressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
