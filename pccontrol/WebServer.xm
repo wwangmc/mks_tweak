@@ -13,6 +13,7 @@
 #import "GCDWebServerErrorResponse.h"
 #import "GCDWebServerDataRequest.h"
 #import "GCDWebServerStreamedResponse.h"
+#import "Switcher.h"
 
 void startWebServer()
 {
@@ -483,5 +484,49 @@ void initHandle(GCDWebServer *webServer)
         };
         
         return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+    }];
+
+    // 清理指定后台
+    [webServer addHandlerForMethod:@"GET" path:@"/killByBID" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+            
+        NSString *pkgName = request.query[@"pkgName"];
+        
+        if (!pkgName) {
+            return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
+                                                        message:@"Missing 'pkgName' parameter"];
+        }
+        killByBID(pkgName);
+        NSDictionary *jsonData = @{
+            @"status": @"success"
+        };
+        
+        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+    }];
+
+    // 清理所有后台
+    [webServer addHandlerForMethod:@"POST"
+                         path:@"/killAll"
+                 requestClass:[GCDWebServerDataRequest class] // 必须是 DataRequest 才能读取 Body
+                 processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request){
+    
+        GCDWebServerDataRequest *dataRequest = (GCDWebServerDataRequest *)request;
+        
+        NSError *jsonError;
+        id jsonObject = [NSJSONSerialization JSONObjectWithData:dataRequest.data
+                                                    options:kNilOptions
+                                                        error:&jsonError];
+        NSArray *jsonArray = @[];
+        if (!jsonError && [jsonObject isKindOfClass:[NSArray class]]) {
+            jsonArray = (NSArray *)jsonObject;
+            NSLog(@"Received JSON Array: %@", jsonArray);
+        }
+        
+        killAll(jsonArray);
+        
+        // 返回成功响应
+        return [GCDWebServerDataResponse responseWithJSONObject:@{
+            @"status": @"success",
+            @"receivedItems": @(jsonArray.count)
+        }];
     }];
 }

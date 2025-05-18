@@ -1,7 +1,5 @@
 #include "headers/BKUserEventTimer.h"
 #import <IOKit/hid/IOHIDService.h>
-#include "socketConfig.h"
-
 #include "headers/CFUserNotification.h"
 
 #import "Touch.h"
