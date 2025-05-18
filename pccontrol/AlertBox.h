@@ -3,6 +3,5 @@
 #import <UIKit/UIKit.h>
 
 void showAlertBox(NSString* title, NSString* content, int dismissTime);
-void showAlertBoxFromRawData(UInt8 *eventData, NSError **error);
 
 #endif

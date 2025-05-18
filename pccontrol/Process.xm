@@ -4,10 +4,7 @@ int (*openApp)(CFStringRef, Boolean);
 // 这里的路径不需要无根处理
 static void* sbServices = dlopen("/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices", RTLD_LAZY);
 
-int switchProcessForegroundFromRawData(UInt8 *eventData)
-{
-    return bringAppForeground([NSString stringWithFormat:@"%s", eventData]);
-}
+
 
 int bringAppForeground(NSString *appIdentifier)
 {

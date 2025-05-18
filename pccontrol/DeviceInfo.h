@@ -14,5 +14,4 @@
 #define DEVICE_INFO_TASK_GET_BATTERY_INFO 31 
 
 
-NSString *getDeviceInfoFromRawData(UInt8* eventData, NSError **error);
 NSString *getDeviceInfoFromRawData(int eventData, NSError **error);

@@ -10,12 +10,6 @@ static NSString* modelName()
                                 encoding:NSUTF8StringEncoding];
 }
 
-NSString *getDeviceInfoFromRawData(UInt8* eventData, NSError **error)
-{
-    NSArray *data = [[NSString stringWithFormat:@"%s", eventData] componentsSeparatedByString:@";;"];
-    int task = [data[0] intValue];
-    return getDeviceInfoFromRawData(task,error);
-}
 
 NSString *getDeviceInfoFromRawData(int eventData, NSError **error)
 {

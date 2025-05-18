@@ -1,5 +1,4 @@
 #include "Common.h"
-#include "Config.h"
 #import <sys/utsname.h>
 #import <rootless.h>
 
@@ -86,30 +85,12 @@ Get document root of springboard
 NSString* getDocumentRoot()
 {
     //NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    return [NSString stringWithFormat:ROOT_PATH_NS(@"/var/mobile/Library/%s/") ,DOCUMENT_ROOT_FOLDER_NAME];
+    return [NSString stringWithFormat:ROOT_PATH_NS(@"/var/mobile/Library/%s/") ,@"ZXTouch"];
 }
 
-/**
-Get scripts path
-*/
-NSString* getScriptsFolder()
-{
-    //NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    return [NSString stringWithFormat:@"%@/%s/", getDocumentRoot(), SCRIPT_FOLDER_NAME];
-}
 
-/**
-Get config dir
-*/
-NSString *getConfigFilePath()
-{
-	return [getDocumentRoot() stringByAppendingPathComponent:@CONFIG_FOLDER_NAME];
-}
 
-NSString *getCommonConfigFilePath()
-{
-    return [getConfigFilePath() stringByAppendingPathComponent:@COMMON_CONFIG_NAME];
-}
+
 
 void swapCGFloat(CGFloat *a, CGFloat *b)
 {

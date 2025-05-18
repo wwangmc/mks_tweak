@@ -150,68 +150,39 @@ static void appendChildEvent(IOHIDEventRef parent, int type, int index, float x,
     }
 }
 
-
-/**
-Perform touch events with data received from socket
-*/
-void performTouchFromRawData(UInt8 *eventData)
+void touch(float x,float y,int index,int touchType)
 {
-    // generate a parent event
-	IOHIDEventRef parent = IOHIDEventCreateDigitizerEvent(kCFAllocatorDefault, mach_absolute_time(), 3, 99, 1, 0, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0, 0, 0); 
-    IOHIDEventSetIntegerValue(parent , 0xb0019, 1); //set flags of parent event   flags: 0x20001 -> 0xa0001
-    IOHIDEventSetIntegerValue(parent , 0x4, 1); //set flags of parent event   flags: 0xa0001 -> 0xa0011
+    @autoreleasepool {
+        IOHIDEventRef parent = IOHIDEventCreateDigitizerEvent(kCFAllocatorDefault, 
+                                                        mach_absolute_time(), 
+                                                        3, 
+                                                        99, 
+                                                        1, 
+                                                        0, 
+                                                        0, 
+                                                        0.0f, 
+                                                        0.0f, 
+                                                        0.0f, 
+                                                        0.0f, 
+                                                        0.0f, 
+                                                        0, 
+                                                        0, 
+                                                        0);
 
-    for (int i = 0; i < getTouchCountFromDataArray(eventData); i++)
-    {
-        //NSLog(@"### com.zjx.springboard: get data. index: %d. type: %d. touchIndex: %d. x: %f. y: %f", i, getTouchTypeFromDataArray(eventData, i), getTouchIndexFromDataArray(eventData, i), getTouchXFromDataArray(eventData, i), getTouchYFromDataArray(eventData, i));
-        int touchType = getTouchTypeFromDataArray(eventData, i);
-        int x = getTouchXFromDataArray(eventData, i);
-        int y = getTouchYFromDataArray(eventData, i);
-        int index = getTouchIndexFromDataArray(eventData, i);
+        IOHIDEventSetIntegerValue(parent, 0xb0019, 1); // Set flags
+        IOHIDEventSetIntegerValue(parent, 0x4, 1);
 
-        appendChildEvent(parent, touchType, index, x, y); // append child event to parent
+        // Append the appropriate child event
+        appendChildEvent(parent, touchType, index, x, y);
 
-        switch (touchType)
-        {
-            case TOUCH_MOVE:
-                eventsToAppend[index][EVENT_VALID_INDEX] = VALID_AT_NEXT_APPEND;
-                eventsToAppend[index][EVENT_TYPE_INDEX] = TOUCH_MOVE;
-                eventsToAppend[index][EVENT_X_INDEX] = (int)x;
-                eventsToAppend[index][EVENT_Y_INDEX] = (int)y;
-                break;
-            case TOUCH_DOWN:
-                eventsToAppend[index][EVENT_VALID_INDEX] = VALID_AT_NEXT_APPEND;
-                eventsToAppend[index][EVENT_TYPE_INDEX] = TOUCH_DOWN;
-                eventsToAppend[index][EVENT_X_INDEX] = (int)x; //!!!!!!directly converting to int may couse some precision problems
-                eventsToAppend[index][EVENT_Y_INDEX] = (int)y; //!!!
-                break;
-            case TOUCH_UP:
-                eventsToAppend[index][EVENT_VALID_INDEX] = NOT_VALID;
-                break;
-        }
+        // Finalize event and dispatch
+        IOHIDEventSetIntegerValue(parent, 0xb0007, 0x23);
+        IOHIDEventSetIntegerValue(parent, 0xb0008, 0x1);
+        IOHIDEventSetIntegerValue(parent, 0xb0009, 0x1);
 
+        postIOHIDEvent(parent);
+        CFRelease(parent);
     }
-
-    for (int i = 0; i < MAX_FINGER_INDEX; i++)
-    {
-        if (eventsToAppend[i][EVENT_VALID_INDEX] == VALID)
-        {
-            //NSLog(@"com.zjx.springboard: appending event for finger: %d. type: %d. x: %d. y: %d", i, eventsToAppend[i][EVENT_TYPE_INDEX], eventsToAppend[i][EVENT_X_INDEX], eventsToAppend[i][EVENT_Y_INDEX]);
-            appendChildEvent(parent, eventsToAppend[i][EVENT_TYPE_INDEX], i, eventsToAppend[i][EVENT_X_INDEX], eventsToAppend[i][EVENT_Y_INDEX]);
-        }
-        else if (eventsToAppend[i][EVENT_VALID_INDEX] == VALID_AT_NEXT_APPEND) // make it valid
-        {
-            //NSLog(@"com.zjx.springboard:  finger: %d to become valid. type: %d. x: %d. y: %d", i, eventsToAppend[i][EVENT_TYPE_INDEX], eventsToAppend[i][EVENT_X_INDEX], eventsToAppend[i][EVENT_Y_INDEX]);
-            eventsToAppend[i][EVENT_VALID_INDEX] = VALID;
-        }
-    }
-
-    IOHIDEventSetIntegerValue(parent, 0xb0007, 0x23);
-    IOHIDEventSetIntegerValue(parent, 0xb0008, 0x1);
-    IOHIDEventSetIntegerValue(parent, 0xb0009, 0x1);
-
-    postIOHIDEvent(parent);
-    CFRelease(parent);
 }
 
 void jsonToEventDataAndPerform(NSDictionary *jsonDict, NSError **error) {
@@ -259,36 +230,7 @@ void jsonToEventDataAndPerform(NSDictionary *jsonDict, NSError **error) {
         float y = [yValue floatValue];
         int index = [indexValue intValue];
 
-        // Create parent event
-        IOHIDEventRef parent = IOHIDEventCreateDigitizerEvent(kCFAllocatorDefault, 
-                                                              mach_absolute_time(), 
-                                                              3, 
-                                                              99, 
-                                                              1, 
-                                                              0, 
-                                                              0, 
-                                                              0.0f, 
-                                                              0.0f, 
-                                                              0.0f, 
-                                                              0.0f, 
-                                                              0.0f, 
-                                                              0, 
-                                                              0, 
-                                                              0);
-
-        IOHIDEventSetIntegerValue(parent, 0xb0019, 1); // Set flags
-        IOHIDEventSetIntegerValue(parent, 0x4, 1);
-
-        // Append the appropriate child event
-        appendChildEvent(parent, touchType, index, x, y);
-
-        // Finalize event and dispatch
-        IOHIDEventSetIntegerValue(parent, 0xb0007, 0x23);
-        IOHIDEventSetIntegerValue(parent, 0xb0008, 0x1);
-        IOHIDEventSetIntegerValue(parent, 0xb0009, 0x1);
-
-        postIOHIDEvent(parent);
-        CFRelease(parent);
+        touch(x,y,index,touchType);
     }
 }
 

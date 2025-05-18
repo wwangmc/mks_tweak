@@ -18,67 +18,7 @@ static int windowHeight = 200;
 static NSDictionary* backgroundColorDict = @{@"4":[UIColor colorWithRed:0.282f green:0.78f blue:0.45f alpha:1.0f], @"1":[UIColor colorWithRed:0.945f green:0.275f blue:0.408f alpha:1.0f],@"2":[UIColor colorWithRed:1.0f green:0.867f blue:0.341f alpha:1.0f],@"3":[UIColor whiteColor]};
 static NSDictionary* fontColorDict = @{@"4":[UIColor whiteColor], @"1":[UIColor whiteColor],@"2":[UIColor colorWithRed:0.0f green:0.0f blue:0.0f alpha:0.7f],@"3":[UIColor colorWithRed:0.0f green:0.0f blue:0.0f alpha:0.7f]};
 static UIWindow *_window;
-void showToastFromRawData(UInt8 *eventData, NSError **error)
-{
-    @autoreleasepool {
-        // 使用 UTF-8 编码将 `eventData` 转换为 NSString
-        NSString *rawData = [[NSString alloc] initWithBytes:eventData 
-                                                     length:strlen((char *)eventData) 
-                                                   encoding:NSUTF8StringEncoding];
-        if (!rawData) {
-            *error = [NSError errorWithDomain:@"com.zjx.zxtouchsp"
-                                         code:999
-                                     userInfo:@{NSLocalizedDescriptionKey: @"-1;;Failed to decode data as UTF-8.\r\n"}];
-            return;
-        }
 
-        // 按照 ";;" 分割字符串
-        NSArray *data = [rawData componentsSeparatedByString:@";;"];
-        if ([data count] < 3) {
-            *error = [NSError errorWithDomain:@"com.zjx.zxtouchsp"
-                                         code:999
-                                     userInfo:@{NSLocalizedDescriptionKey: @"-1;;The data format should be \"type;;content;;duration(in seconds)[];;position(0: top, 1: bottom, 2: left, 3: right)]\". For example, 0;;success;;1.5;;0.\r\n"}];
-            return;
-        }
-
-        int type = [data[0] intValue];
-        int duration = [data[2] intValue];
-        int position = 0;
-        int fontSize = 0;
-        if ([data count] >= 4) {
-            position = [data[3] intValue];
-        }
-        if ([data count] >= 5) {
-            fontSize = [data[4] intValue];
-        }
-
-        if (type > 4 || type < 0) {
-            *error = [NSError errorWithDomain:@"com.zjx.zxtouchsp"
-                                         code:999
-                                     userInfo:@{NSLocalizedDescriptionKey: @"-1;;Unknown type. The type ranges from 0-3. Please refer to the documentation on Github.\r\n"}];
-            return;
-        }
-        if (duration <= 0 && type != 0) {
-            *error = [NSError errorWithDomain:@"com.zjx.zxtouchsp"
-                                         code:999
-                                     userInfo:@{NSLocalizedDescriptionKey: @"-1;;Duration should be a positive float number.\r\n"}];
-            return;
-        }
-
-        // 异步处理显示 Toast
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            if (type == 0) {
-                [Toast hideToast];
-            } else {
-                [Toast showToastWithContent:data[1] 
-                                       type:type 
-                                   duration:duration 
-                                   position:position 
-                                   fontSize:fontSize];
-            }
-        });
-    }
-}
 /**
  * @brief Parses a JSON string to extract Toast parameters and displays the Toast.
  * @param jsonString An NSString containing the JSON data.
