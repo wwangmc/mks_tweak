@@ -105,4 +105,9 @@ POST http://{ip}:8081/touch
 	"type": "down"
 }
 
+[开启vpn]
+GET http://{ip}/turnOnVPN
+
+[关闭vpn]
+GET http://{ip}/turnOffVPN
 

@@ -14,8 +14,9 @@
 #import "GCDWebServerDataRequest.h"
 #import "GCDWebServerStreamedResponse.h"
 #import "Switcher.h"
+#import "DeviceConfigurator.h"
 
-
+static GCDWebServer *webServer = nil;
 
 NSDictionary* getJsonBody(GCDWebServerDataRequest *request,NSError *jsonError)
 {
@@ -44,14 +45,27 @@ GCDWebServerErrorResponse* jsonFormatErrorResponse()
 
 void startWebServer()
 {    
-
-
+    // sudo killall -9 TSDaemon Hades 干掉触动
+    if (webServer) {
+        [webServer stop];
+        webServer = nil;
+    }
+    webServer = [[GCDWebServer alloc] init];
+    initHandle(webServer);
     
-
-    GCDWebServer *webServer = [[GCDWebServer alloc] init];
-    initHandle(webServer);    
-    [webServer startWithPort:WEB_PORT bonjourName:nil];
-    NSLog(@"GCDWebServer running on %@", webServer.serverURL);
+    NSError *error = nil;
+    // 使用同步启动方式确保启动完成
+    BOOL success = [webServer startWithOptions:@{
+        GCDWebServerOption_Port: @(WEB_PORT),
+        GCDWebServerOption_BindToLocalhost: @NO,
+        GCDWebServerOption_AutomaticallySuspendInBackground: @NO
+    } error:&error];
+    
+    if (success) {
+        NSLog(@"GCDWebServer running on %@", webServer.serverURL);
+    } else {
+        NSLog(@"Failed to start web server: %@", error);
+    }
 }
 
 void initHandle(GCDWebServer *webServer)
@@ -487,6 +501,16 @@ void initHandle(GCDWebServer *webServer)
             @"status": @"success",
             @"receivedItems": @(jsonArray.count)
         }];
+    }];
+    // 开启vpn
+    [webServer addHandlerForMethod:@"GET" path:@"/turnOnVPN" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        turnOnVPN();
+        return staticSuccessResponse();
+    }];
+    // 关闭vpn
+    [webServer addHandlerForMethod:@"GET" path:@"/turnOffVPN" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        turnOffVPN();
+        return staticSuccessResponse();
     }];
 }
 
