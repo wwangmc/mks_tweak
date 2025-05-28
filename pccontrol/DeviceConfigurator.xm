@@ -1,5 +1,6 @@
 #import "DeviceConfigurator.h"
 #import <objc/runtime.h>
+#import "pac_helper.h"
 
 static ALCity *(*PSCityForTimeZone)(CFTimeZoneRef timeZone);
 
@@ -241,11 +242,11 @@ NSString *InternationalSettingsExtractLanguageCode(NSString *languageCode) {
             @autoreleasepool {
                 [DeviceConfigurator loadGeneralSettingsUIFramework];
                 
-                /*MSImageRef PreferencesBinary = MSGetImageByName("/System/Library/PrivateFrameworks/Preferences.framework/Preferences");
+                MSImageRef PreferencesBinary = MSGetImageByName("/System/Library/PrivateFrameworks/Preferences.framework/Preferences");
                 if (PreferencesBinary)
                 {
-                    PSCityForTimeZone = make_sym_callable(MSFindSymbol(PreferencesBinary, "_PSCityForTimeZone"));
-                }*/
+                    PSCityForTimeZone = (ALCity *(*)(CFTimeZoneRef))make_sym_callable(MSFindSymbol(PreferencesBinary, "_PSCityForTimeZone"));
+                }
                 
                 if (PSCityForTimeZone)
                 {
@@ -280,7 +281,7 @@ NSString *InternationalSettingsExtractLanguageCode(NSString *languageCode) {
                             }
                             
                             // this is where changes actually happen
-                            [objc_getClass("PSTimeZoneController") setCurrentTimeZone:timeZoneName];
+                            [objc_getClass("PSTimeZoneController") setTimeZone:timeZoneName];
                         }
                         
                         CFRelease(timeZone);

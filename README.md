@@ -106,8 +106,25 @@ POST http://{ip}:8081/touch
 }
 
 [开启vpn]
-GET http://{ip}/turnOnVPN
+GET http://{ip}:8081/turnOnVPN
 
 [关闭vpn]
-GET http://{ip}/turnOffVPN
+GET http://{ip}:8081/turnOffVPN
 
+[获取地区]
+GET http://{ip}:8081/currentLocale
+
+[获取语言]
+GET http://{ip}:8081/currentLanguage
+
+[获取时区]
+GET http://{ip}:8081/currentTimeZone
+
+[设置地区](示例参数为美国)
+GET http://{ip}:8081/setLocale?locale=us
+
+[设置语言](示例参数为美国)
+http://{ip}:8081/setLanguage?lang=en-US
+
+[设置语言](示例参数为美国)
+http://{ip}:8081/setCurrentTimeZone?timeZone=America/New_York

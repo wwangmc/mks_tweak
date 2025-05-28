@@ -502,11 +502,13 @@ void initHandle(GCDWebServer *webServer)
             @"receivedItems": @(jsonArray.count)
         }];
     }];
+    
     // 开启vpn
     [webServer addHandlerForMethod:@"GET" path:@"/turnOnVPN" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         [DeviceConfigurator turnOnVPN];
         return staticSuccessResponse();
     }];
+
     // 关闭vpn
     [webServer addHandlerForMethod:@"GET" path:@"/turnOffVPN" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         [DeviceConfigurator turnOffVPN];
@@ -515,8 +517,7 @@ void initHandle(GCDWebServer *webServer)
 
     // 获取当前时区
     [webServer addHandlerForMethod:@"GET" path:@"/currentTimeZone" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString * res = 
-                        [DeviceConfigurator currentTimeZone];
+        NSString * res = [DeviceConfigurator currentTimeZone];
 
         NSDictionary *jsonData = @{
             @"status": @"success",
@@ -527,8 +528,7 @@ void initHandle(GCDWebServer *webServer)
 
     // 获取当前语言
     [webServer addHandlerForMethod:@"GET" path:@"/currentLanguage" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString * res = 
-                [DeviceConfigurator currentLanguage];
+        NSString * res = [DeviceConfigurator currentLanguage];
 
         NSDictionary *jsonData = @{
             @"status": @"success",
@@ -537,16 +537,46 @@ void initHandle(GCDWebServer *webServer)
         return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
     }];
 
-    // 获取当前地区
+    // 当前地区
     [webServer addHandlerForMethod:@"GET" path:@"/currentLocale" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString * res = 
-                        [DeviceConfigurator currentLocale];
-        // [[DeviceConfigurator sharedConfigurator] setUserAssignedDeviceName:deviceName];
+        NSString * res = [DeviceConfigurator currentLocale];
+
         NSDictionary *jsonData = @{
             @"status": @"success",
             @"data": res
         };
         return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
     }];
+
+    // 设置地区
+    [webServer addHandlerForMethod:@"GET" path:@"/setLocale" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *locale = request.query[@"locale"];
+        if (!locale) {
+            return missingParamResponse();
+        }
+        [DeviceConfigurator setCurrentLocale:locale];
+        return staticSuccessResponse();
+    }];
+
+    // 设置语言
+    [webServer addHandlerForMethod:@"GET" path:@"/setLanguage" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *lang = request.query[@"lang"];
+        if (!lang) {
+            return missingParamResponse();
+        }
+        [DeviceConfigurator setCurrentLanguage:lang];
+        return staticSuccessResponse();
+    }];
+
+    // 设置时区
+    [webServer addHandlerForMethod:@"GET" path:@"/setCurrentTimeZone" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *timeZone = request.query[@"timeZone"];
+        if (!timeZone) {
+            return missingParamResponse();
+        }
+        [DeviceConfigurator setCurrentTimeZone:timeZone];
+        return staticSuccessResponse();
+    }];
+    
 }
 

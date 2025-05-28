@@ -19,10 +19,12 @@
 + (BOOL)isVPNEnabled;
 
 /* Utils */
+/*
 + (void)takeScreenshot;
 + (void)shutdown;
 + (void)reboot;
 + (void)suspend;
+*/
 
 /* Language & Region */
 + (NSString *)currentLanguage;
