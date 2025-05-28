@@ -504,13 +504,49 @@ void initHandle(GCDWebServer *webServer)
     }];
     // 开启vpn
     [webServer addHandlerForMethod:@"GET" path:@"/turnOnVPN" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        turnOnVPN();
+        [DeviceConfigurator turnOnVPN];
         return staticSuccessResponse();
     }];
     // 关闭vpn
     [webServer addHandlerForMethod:@"GET" path:@"/turnOffVPN" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        turnOffVPN();
+        [DeviceConfigurator turnOffVPN];
         return staticSuccessResponse();
+    }];
+
+    // 获取当前时区
+    [webServer addHandlerForMethod:@"GET" path:@"/currentTimeZone" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString * res = 
+                        [DeviceConfigurator currentTimeZone];
+
+        NSDictionary *jsonData = @{
+            @"status": @"success",
+            @"data": res
+        };
+        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+    }];
+
+    // 获取当前语言
+    [webServer addHandlerForMethod:@"GET" path:@"/currentLanguage" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString * res = 
+                [DeviceConfigurator currentLanguage];
+
+        NSDictionary *jsonData = @{
+            @"status": @"success",
+            @"data": res
+        };
+        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+    }];
+
+    // 获取当前地区
+    [webServer addHandlerForMethod:@"GET" path:@"/currentLocale" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString * res = 
+                        [DeviceConfigurator currentLocale];
+        // [[DeviceConfigurator sharedConfigurator] setUserAssignedDeviceName:deviceName];
+        NSDictionary *jsonData = @{
+            @"status": @"success",
+            @"data": res
+        };
+        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
     }];
 }
 
