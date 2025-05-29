@@ -6,5 +6,6 @@
 
 int bringAppForeground(NSString *appIdentifier);
 id getFrontMostApplication();
+void rebootUserspace();
 
 #endif

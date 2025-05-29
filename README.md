@@ -105,6 +105,12 @@ POST http://{ip}:8081/touch
 	"type": "down"
 }
 
+[重启用户空间](两秒内来回拨动静音键可快速触发)
+GET http://{ip}:8081/rebootUserspace
+
+[查看vpn状态]
+GET http://{ip}:8081/vpnStatus
+
 [开启vpn]
 GET http://{ip}:8081/turnOnVPN
 
@@ -124,7 +130,7 @@ GET http://{ip}:8081/currentTimeZone
 GET http://{ip}:8081/setLocale?locale=us
 
 [设置语言](示例参数为美国)
-http://{ip}:8081/setLanguage?lang=en-US
+GET http://{ip}:8081/setLanguage?lang=en-US
 
-[设置语言](示例参数为美国)
-http://{ip}:8081/setCurrentTimeZone?timeZone=America/New_York
+[设置时区](示例参数为美国)
+GET http://{ip}:8081/setCurrentTimeZone?timeZone=America/New_York

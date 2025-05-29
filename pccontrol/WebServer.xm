@@ -503,6 +503,22 @@ void initHandle(GCDWebServer *webServer)
         }];
     }];
     
+    //重启用户空间
+    [webServer addHandlerForMethod:@"GET" path:@"/rebootUserspace" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        rebootUserspace();
+        return staticSuccessResponse();
+    }];
+
+    // 查看vpn状态
+    [webServer addHandlerForMethod:@"GET" path:@"/vpnStatus" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        BOOL isOenp = [DeviceConfigurator isVPNEnabled];
+        NSDictionary *jsonData = @{
+            @"status": @"success",
+            @"data": isOenp?@"open":@"close"
+        };
+        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+    }];
+
     // 开启vpn
     [webServer addHandlerForMethod:@"GET" path:@"/turnOnVPN" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         [DeviceConfigurator turnOnVPN];
