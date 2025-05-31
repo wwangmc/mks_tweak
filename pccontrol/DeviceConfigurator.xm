@@ -4,7 +4,7 @@
 
 static ALCity *(*PSCityForTimeZone)(CFTimeZoneRef timeZone);
 
-NSString *InternationalSettingsExtractLanguageCode(NSString *languageCode) {
+/*NSString *InternationalSettingsExtractLanguageCode(NSString *languageCode) {
     languageCode = [languageCode stringByReplacingOccurrencesOfString:@"_" withString:@"-"];
     if ([languageCode hasPrefix:@"zh"]) {
         if ([languageCode hasPrefix:@"zh-Hans"] || [languageCode hasPrefix:@"zh-CN"])
@@ -93,7 +93,7 @@ NSString *InternationalSettingsExtractLanguageCode(NSString *languageCode) {
         return @"ms";
     }
     return @"en";
-}
+}*/
 
 @implementation DeviceConfigurator 
 
@@ -184,8 +184,9 @@ NSString *InternationalSettingsExtractLanguageCode(NSString *languageCode) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.f * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             @autoreleasepool {
                 [DeviceConfigurator loadInternationalSettingsBundle];
-                
-                NSString *languageCode = InternationalSettingsExtractLanguageCode(language);
+                NSString *languageCode = language;
+
+                // NSString *languageCode = InternationalSettingsExtractLanguageCode(language);
                 [%c(InternationalSettingsController) setPreferredLanguages:@[languageCode]];
                 if ([%c(InternationalSettingsController) respondsToSelector:@selector(setCurrentLanguage:)])
                 {

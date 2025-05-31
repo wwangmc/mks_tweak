@@ -594,5 +594,18 @@ void initHandle(GCDWebServer *webServer)
         return staticSuccessResponse();
     }];
     
+    [webServer addHandlerForMethod:@"GET" path:@"/setAllSetting" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *timeZone = request.query[@"timeZone"];
+        NSString *lang = request.query[@"lang"];
+        NSString *locale = request.query[@"locale"];
+
+        if (!timeZone&&!lang&&!locale) {
+            return missingParamResponse();
+        }
+        [DeviceConfigurator setCurrentLocale:locale];
+        [DeviceConfigurator setCurrentTimeZone:timeZone];
+        [DeviceConfigurator setCurrentLanguage:lang];
+        return staticSuccessResponse();
+    }];
 }
 
