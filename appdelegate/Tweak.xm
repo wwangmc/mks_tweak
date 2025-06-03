@@ -19,6 +19,8 @@ char *dyld_get_image_name_new(uint32_t index)
     return imageName;
 }
 
+/*
 %ctor {
     MSHookFunction((void *)_dyld_get_image_name,(void *)dyld_get_image_name_new, (void **)&dyld_get_image_name_old);
 }
+*/

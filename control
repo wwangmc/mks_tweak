@@ -6,5 +6,5 @@ Architecture: iphoneos-arm
 Description: An awesome tool of some sort!!
 Maintainer: ww
 Author: ww
-Section: System
+Section: MKS
 Tag: role::hacker
