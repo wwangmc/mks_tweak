@@ -1,6 +1,6 @@
 #include "Process.h"
 #include "Common.h"
-#include <rootless.h>
+#include <roothide.h>
 #include <spawn.h>
 
 int (*openApp)(CFStringRef, Boolean);
@@ -40,6 +40,6 @@ void rebootUserspace() {
     if (@available(iOS 15.0, *)) {
         pid_t pid;
         const char* args[] = {"launchctl", "reboot", "userspace", NULL, NULL};
-        posix_spawn(&pid, ROOT_PATH("/usr/bin/launchctl"), NULL, NULL, (char* const*)args, NULL);
+        posix_spawn(&pid, jbroot("/usr/bin/launchctl"), NULL, NULL, (char* const*)args, NULL);
     }
 }	

@@ -1,6 +1,6 @@
 #import <UIKit/UIKit.h>
 #import "SSViewController.h"
-#import <rootless.h>
+#import <roothide.h>
 
 @interface AppStoreAccountViewController: UIViewController
 @end
@@ -15,7 +15,7 @@
 	%orig;
   UIBarButtonItem *switcherButton =
     [[UIBarButtonItem alloc]
-      initWithImage:[UIImage imageNamed:ROOT_PATH_NS(@"/Library/Application Support/StoreSwitcher/switcher")]
+      initWithImage:[UIImage imageNamed:jbroot(@"/Library/Application Support/StoreSwitcher/switcher")]
       style:UIBarButtonItemStylePlain
       target:self
       action:@selector(openSwitcher:)

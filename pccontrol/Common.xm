@@ -1,6 +1,7 @@
 #include "Common.h"
 #import <sys/utsname.h>
-#import <rootless.h>
+#import <roothide.h>
+
 
 
 /*
@@ -85,5 +86,5 @@ Get document root of springboard
 NSString* getDocumentRoot()
 {
     //NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    return [NSString stringWithFormat:ROOT_PATH_NS(@"/var/mobile/Library/%s/") ,@"ZXTouch"];
+    return [NSString stringWithFormat:jbroot(@"/var/mobile/Library/%s/") ,@"ZXTouch"];
 }

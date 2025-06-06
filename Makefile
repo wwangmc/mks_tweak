@@ -1,13 +1,17 @@
 THEOS_DEVICE_IP=localhost
 THEOS_DEVICE_PORT=2222
 ROOTLESS = 1
+ROOTHIDE = 1
 DEBUG = 0
 # FINALPACKAGE=1
 
 ifeq ($(ROOTLESS),1)
  THEOS_PACKAGE_SCHEME=rootless
 endif
-ifeq ($(THEOS_PACKAGE_SCHEME), rootless)
+ifeq ($(ROOTHIDE),1)
+ THEOS_PACKAGE_SCHEME=roothide
+endif
+ifneq (,$(filter rootless roothide,$(THEOS_PACKAGE_SCHEME)))
  TARGET = iphone:clang:latest:15.0
 else
  TARGET = iphone:clang:latest:12.0
