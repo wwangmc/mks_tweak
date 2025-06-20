@@ -76,20 +76,13 @@ void showToastFromJson(NSDictionary *jsonDict, NSError **error) {
         // Map position string to integer values
         int toastPosition = TOAST_TOP; // Default to top if no position is provided
         if (positionString) {
-            if ([positionString isEqualToString:@"top"]) {
-                toastPosition = TOAST_TOP;
-            } else if ([positionString isEqualToString:@"bottom"]) {
+            if ([positionString isEqualToString:@"bottom"]) {
                 toastPosition = TOAST_BOTTOM;
             } else if ([positionString isEqualToString:@"left"]) {
                 toastPosition = TOAST_LEFT;
             } else if ([positionString isEqualToString:@"right"]) {
                 toastPosition = TOAST_RIGHT;
-            } else {
-                *error = [NSError errorWithDomain:@"com.zjx.zxtouchsp"
-                                             code:999
-                                         userInfo:@{NSLocalizedDescriptionKey: @"Invalid position. Position must be 'top', 'bottom', 'left', or 'right'.\r\n"}];
-                return;
-            }
+            } 
         }
 
         int toastFontSize = fontSize ? [fontSize intValue] : 14; // Default font size
@@ -165,7 +158,7 @@ void showToastFromJson(NSDictionary *jsonDict, NSError **error) {
         windowHeight = contentSize.height + 20;
         
         CGFloat windowX = (screenWidth - windowWidth) / 2;
-        CGFloat windowY = (position == 1) ? (screenHeight - windowHeight - 50) : 30;
+        CGFloat windowY = (position == 1) ? (screenHeight - windowHeight - 50) : 0;
         
         // 7. 调整安全区域（关键修改）
         UIEdgeInsets safeArea = UIEdgeInsetsZero;
