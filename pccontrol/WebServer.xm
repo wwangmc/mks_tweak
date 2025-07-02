@@ -366,6 +366,13 @@ void initScreenHandle(GCDWebServer *webServer)
 
         return [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
     }];
+    // 原图截图
+    [webServer addHandlerForMethod:@"GET" path:@"/screenshot_original" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+  
+        NSData *imageData = [Screen takeScreenshot];
+
+        return [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
+    }];
 
     // 流式截图接口
     [webServer addHandlerForMethod:@"GET"
@@ -605,6 +612,19 @@ void initHandle(GCDWebServer *webServer)
         NSDictionary *jsonData = @{
                 @"status": @"success",
                 @"data": res,
+        };
+        // 返回 JSON 格式数据
+        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+    }];
+
+    //当前应用
+    [webServer addHandlerForMethod:@"GET" path:@"/currApp" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        // NSDictionary *infoDictionary = [[NSBundle mainBundle] infoDictionary];//获取app版本信息
+        // NSString *app_Name = [infoDictionary objectForKey:@"CFBundleDisplayName"];
+        id app_Name = getFrontMostApplication();
+        NSDictionary *jsonData = @{
+                @"status": @"success",
+                @"data": app_Name,
         };
         // 返回 JSON 格式数据
         return [GCDWebServerDataResponse responseWithJSONObject:jsonData];

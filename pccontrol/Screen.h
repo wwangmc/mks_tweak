@@ -13,6 +13,7 @@
 + (CGFloat)getScale;
 + (CGRect)getBounds;
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality;
++ (NSData *)takeScreenshot;
 @end
 
 #endif

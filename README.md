@@ -3,6 +3,13 @@
 [获取截屏] quality图片质量越低越差但会更流畅
 GET http://{ip}:8081/screenshot?quality=0.3
 
+[获取截屏] 
+GET http://{ip}:8081/screenshot_original
+
+
+[获取前台应用] 
+GET http://{ip}:8081/currApp
+
 [获取截屏流式返回]
 GET http://{ip}:8081/screenshotStream?quality=0.3&fps=15
 

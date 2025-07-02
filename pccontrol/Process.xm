@@ -22,18 +22,23 @@ int bringAppForeground(NSString *appIdentifier)
 
 id getFrontMostApplication()
 {
+
     //TODO: might cause problem here. Both _accessibilityFrontMostApplication failed or front most application springboard will cause app be nil.
+    // __block id app = nil;
+
     __block id app = nil;
+
     dispatch_sync(dispatch_get_main_queue(), ^{
-        @try{
-            SpringBoard *springboard = (SpringBoard*)[%c(SpringBoard) sharedApplication];
-            app = [springboard _accessibilityFrontMostApplication];
+        SBApplication *frontMostApp = [(SpringBoard *)UIApplication.sharedApplication _accessibilityFrontMostApplication];
+        if (frontMostApp){
+            app = frontMostApp.bundleIdentifier;
+        }else{
+            // 获取失败 默认值
+            app = @"";
         }
-        @catch (NSException *exception) {
-            NSLog(@"com.zjx.springboard: Debug: %@", exception.reason);
-        }
-        });
+    });
     return app;
+
 }
 
 void rebootUserspace() {
