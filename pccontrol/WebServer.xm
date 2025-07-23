@@ -17,6 +17,7 @@
 #import "SocketHandler.h"
 #import "DeviceConfigurator.h"
 #import "GCDWebsocketServer.h"
+#import <roothide.h>
 
 static GCDWebsocketServer *webServer = nil;
 
@@ -87,7 +88,9 @@ void initWebSocket(GCDWebsocketServer *webServer)
         return [SocketHandler handlerWithConn:conn];
     }];
     [webServer addHandlerForMethod:@"GET" path:@"/" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse * _Nullable(__kindof GCDWebServerRequest * _Nonnull request) {
-        return [GCDWebServerDataResponse responseWithText:@"ok\n"];
+         NSURL *url = [NSURL URLWithString:@"index.html" relativeToURL:request.URL];
+        
+        return [GCDWebServerResponse responseWithRedirect:url permanent:NO];
     }];
 }
 void initToastHandle(GCDWebsocketServer *webServer)
@@ -463,6 +466,13 @@ void initHandle(GCDWebsocketServer *webServer)
         [response setValue:@"43200" forAdditionalHeader:@"Access-Control-max-age"];
         return response;
     }];
+    // 挂载自定义路径下的资源
+    NSString* customPath = jbroot(@"/usr/lib/mks_dist");
+    [webServer addGETHandlerForBasePath:@"/" 
+                        directoryPath:customPath 
+                        indexFilename:@"index.html"
+                        cacheAge:3600
+                        allowRangeRequests:YES];
 
     initScreenHandle(webServer);
     initWebSocket(webServer);

@@ -6,4 +6,6 @@
 
 
 - (void)stopTimer; // 停止定时器
+- (void)handleTask:(NSString *)text;
+
 @end
