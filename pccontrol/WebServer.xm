@@ -14,9 +14,11 @@
 #import "GCDWebServerDataRequest.h"
 #import "GCDWebServerStreamedResponse.h"
 #import "Switcher.h"
+#import "SocketHandler.h"
 #import "DeviceConfigurator.h"
+#import "GCDWebsocketServer.h"
 
-static GCDWebServer *webServer = nil;
+static GCDWebsocketServer *webServer = nil;
 
 NSDictionary* getJsonBody(GCDWebServerDataRequest *request,NSError *jsonError)
 {
@@ -24,23 +26,35 @@ NSDictionary* getJsonBody(GCDWebServerDataRequest *request,NSError *jsonError)
                                                         options:kNilOptions
                                                             error:&jsonError];
 }
+GCDWebServerDataResponse* dataResponse(NSDictionary *jsonData)
+{
+    GCDWebServerDataResponse *response = [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+    [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
+    [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
+    return response;
+}
 GCDWebServerDataResponse* staticSuccessResponse()
 {
     NSDictionary *jsonData = @{
         @"status": @"success"
-    };
-    // 通用返回初始化
-    return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+    };                      
+    return dataResponse(jsonData);
 }
 GCDWebServerErrorResponse* missingParamResponse()
 {
-    return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
+    GCDWebServerErrorResponse *response = [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
                                                         message:@"Missing parameter"];
+    [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
+    [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];
+    return response;                                   
 }
 GCDWebServerErrorResponse* jsonFormatErrorResponse()
 {
-    return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
+    GCDWebServerErrorResponse* response = [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
                                                             message:@"Invalid JSON"];
+    [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
+    [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];
+    return response;   
 }
 
 void startWebServer()
@@ -50,7 +64,7 @@ void startWebServer()
         [webServer stop];
         webServer = nil;
     }
-    webServer = [[GCDWebServer alloc] init];
+    webServer = [[GCDWebsocketServer alloc] init];
     initHandle(webServer);
     
     NSError *error = nil;
@@ -67,8 +81,16 @@ void startWebServer()
         NSLog(@"Failed to start web server: %@", error);
     }
 }
-
-void initToastHandle(GCDWebServer *webServer)
+void initWebSocket(GCDWebsocketServer *webServer)
+{
+    [webServer addWebsocketHandlerForPath:@"/" withProcessBlock:^GCDWebsocketServerHandler * _Nullable(GCDWebsocketServerConnection * _Nonnull conn) {
+        return [SocketHandler handlerWithConn:conn];
+    }];
+    [webServer addHandlerForMethod:@"GET" path:@"/" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse * _Nullable(__kindof GCDWebServerRequest * _Nonnull request) {
+        return [GCDWebServerDataResponse responseWithText:@"ok\n"];
+    }];
+}
+void initToastHandle(GCDWebsocketServer *webServer)
 {
     //悬浮窗
     [webServer addHandlerForMethod:@"POST"
@@ -148,7 +170,7 @@ void initToastHandle(GCDWebServer *webServer)
                           return staticSuccessResponse();
                       }];
 }
-void initAppHandle(GCDWebServer *webServer)
+void initAppHandle(GCDWebsocketServer *webServer)
 {
     // 获取所有应用信息
     [webServer addHandlerForMethod:@"GET" path:@"/apps" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
@@ -158,7 +180,7 @@ void initAppHandle(GCDWebServer *webServer)
                 @"applications": appsArray
         };
 
-        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+        return dataResponse(jsonData);
     }];
     // 获取应用信息
     [webServer addHandlerForMethod:@"GET" path:@"/appInfo" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
@@ -174,7 +196,7 @@ void initAppHandle(GCDWebServer *webServer)
                 @"info": appInfo
         };
 
-        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+        return dataResponse(jsonData);
     }];
 
     // 卸载应用
@@ -190,7 +212,7 @@ void initAppHandle(GCDWebServer *webServer)
                 @"status": success?@"success":@"fail"
         };
 
-        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+        return dataResponse(jsonData);
     }];
 
     // 清理指定后台
@@ -227,10 +249,10 @@ void initAppHandle(GCDWebServer *webServer)
                           killAll(jsonArray);
 
                           // 返回成功响应
-                          return [GCDWebServerDataResponse responseWithJSONObject:@{
+                          return dataResponse(@{
                                   @"status": @"success",
                                   @"receivedItems": @(jsonArray.count)
-                          }];
+                          });
                       }];
 
     // 切换应用
@@ -249,7 +271,7 @@ void initAppHandle(GCDWebServer *webServer)
                       }];
 }
 
-void initVpnHandle(GCDWebServer *webServer)
+void initVpnHandle(GCDWebsocketServer *webServer)
 {
     // 查看vpn状态
     [webServer addHandlerForMethod:@"GET" path:@"/vpnStatus" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
@@ -258,7 +280,7 @@ void initVpnHandle(GCDWebServer *webServer)
                 @"status": @"success",
                 @"data": isOpen?@"open":@"close"
         };
-        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+        return dataResponse(jsonData);
     }];
 
     // 开启vpn
@@ -273,7 +295,7 @@ void initVpnHandle(GCDWebServer *webServer)
         return staticSuccessResponse();
     }];
 }
-void initSettingHandle(GCDWebServer *webServer)
+void initSettingHandle(GCDWebsocketServer *webServer)
 {
     // 获取当前时区
     [webServer addHandlerForMethod:@"GET" path:@"/currentTimeZone" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
@@ -283,7 +305,7 @@ void initSettingHandle(GCDWebServer *webServer)
                 @"status": @"success",
                 @"data": res
         };
-        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+        return dataResponse(jsonData);
     }];
 
     // 获取当前语言
@@ -294,7 +316,7 @@ void initSettingHandle(GCDWebServer *webServer)
                 @"status": @"success",
                 @"data": res
         };
-        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+        return dataResponse(jsonData);
     }];
 
     // 当前地区
@@ -305,7 +327,7 @@ void initSettingHandle(GCDWebServer *webServer)
                 @"status": @"success",
                 @"data": res
         };
-        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+        return dataResponse(jsonData);
     }];
 
     // 设置地区
@@ -352,7 +374,7 @@ void initSettingHandle(GCDWebServer *webServer)
         return staticSuccessResponse();
     }];
 }
-void initScreenHandle(GCDWebServer *webServer)
+void initScreenHandle(GCDWebsocketServer *webServer)
 {
     // 处理截图
     [webServer addHandlerForMethod:@"GET" path:@"/screenshot" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
@@ -363,15 +385,20 @@ void initScreenHandle(GCDWebServer *webServer)
         float floatValue = [quality floatValue];
 
         NSData *imageData = [Screen takeScreenshotWithQuality:floatValue];
-
-        return [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
+        GCDWebServerDataResponse * response = [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
+        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
+        [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
+        return response;
     }];
     // 原图截图
     [webServer addHandlerForMethod:@"GET" path:@"/screenshot_original" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
   
         NSData *imageData = [Screen takeScreenshot];
 
-        return [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
+        GCDWebServerDataResponse * response = [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
+        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
+        [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
+        return response;
     }];
 
     // 流式截图接口
@@ -421,9 +448,10 @@ void initScreenHandle(GCDWebServer *webServer)
                       }];
 
 }
-void initHandle(GCDWebServer *webServer)
+void initHandle(GCDWebsocketServer *webServer)
 {
     initScreenHandle(webServer);
+    initWebSocket(webServer);
     // 按下home键
     [webServer addHandlerForMethod:@"GET" path:@"/pressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         pressHome();
@@ -482,10 +510,10 @@ void initHandle(GCDWebServer *webServer)
                               return missingParamResponse();
                           }
                           NSString *res = runCommand(cmd);
-                          return [GCDWebServerDataResponse responseWithJSONObject:@{
+                          return dataResponse(@{
                                   @"status": @"success",
                                   @"data": res
-                          }];
+                          });
                       }];
 
     // 删除文本
@@ -568,7 +596,7 @@ void initHandle(GCDWebServer *webServer)
                                   @"data": res
                           };
 
-                          return [GCDWebServerDataResponse responseWithJSONObject:response];
+                          return dataResponse(response);
                       }];
 
 
@@ -614,7 +642,7 @@ void initHandle(GCDWebServer *webServer)
                 @"data": res,
         };
         // 返回 JSON 格式数据
-        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+        return dataResponse(jsonData);
     }];
 
     //当前应用
@@ -627,7 +655,7 @@ void initHandle(GCDWebServer *webServer)
                 @"data": app_Name,
         };
         // 返回 JSON 格式数据
-        return [GCDWebServerDataResponse responseWithJSONObject:jsonData];
+        return dataResponse(jsonData);
     }];
 
     // 获取所有登录过的苹果账号
@@ -655,7 +683,7 @@ void initHandle(GCDWebServer *webServer)
                                   @"data": accountInfos
                           };
 
-                          return [GCDWebServerDataResponse responseWithJSONObject:response];
+                          return dataResponse(response);
                       }];
 
     // 输入当前苹果账号的密码
