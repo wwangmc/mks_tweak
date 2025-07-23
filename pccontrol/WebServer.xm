@@ -450,6 +450,20 @@ void initScreenHandle(GCDWebsocketServer *webServer)
 }
 void initHandle(GCDWebsocketServer *webServer)
 {
+    // 全局OPTIONS处理器
+    [webServer addHandlerForMethod:@"OPTIONS"
+                            pathRegex:@"^/"
+                    requestClass:[GCDWebServerRequest class]
+                    processBlock:^GCDWebServerResponse *(GCDWebServerRequest* request) {
+        GCDWebServerResponse* response = [GCDWebServerResponse response];
+        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];
+        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];
+        [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];
+    
+        [response setValue:@"43200" forAdditionalHeader:@"Access-Control-max-age"];
+        return response;
+    }];
+
     initScreenHandle(webServer);
     initWebSocket(webServer);
     // 按下home键
