@@ -18,6 +18,7 @@
 #import "DeviceConfigurator.h"
 #import "GCDWebsocketServer.h"
 #import <roothide.h>
+#import "ScreenCapture.h"
 
 static GCDWebsocketServer *webServer = nil;
 
@@ -379,6 +380,58 @@ void initSettingHandle(GCDWebsocketServer *webServer)
 }
 void initScreenHandle(GCDWebsocketServer *webServer)
 {
+    [webServer addHandlerForMethod:@"GET" path:@"/screenshot_v2" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        id msgBody = request.query;
+        NSLog(@"screenshot_v2");
+        NSString *format;
+        if (msgBody[@"format"])
+        {
+            format = [([msgBody[@"format"] isKindOfClass:[NSString class]] ? msgBody[@"format"] : @"png") lowercaseString];
+        }
+        else
+        {
+            format = [([msgBody[@"ext"] isKindOfClass:[NSString class]] ? msgBody[@"ext"] : @"png") lowercaseString];
+        }
+        if ([format isEqualToString:@"jpg"])
+            format = @"jpeg";
+            
+        CGFloat compressVal = MIN(MAX([msgBody[@"compress"] isKindOfClass:[NSNumber class]] || [msgBody[@"compress"] isKindOfClass:[NSString class]] ? [msgBody[@"compress"] doubleValue] : 1.0, 0.1), 1.0);
+        
+        CGFloat zoomVal;
+        if (msgBody[@"scale"])
+        {
+            zoomVal = MIN(MAX([msgBody[@"scale"] isKindOfClass:[NSNumber class]] || [msgBody[@"scale"] isKindOfClass:[NSString class]] ? [msgBody[@"scale"] doubleValue] : 100, 10), 300) / 1e2;
+        }
+        else
+        {
+            zoomVal = MIN(MAX([msgBody[@"zoom"] isKindOfClass:[NSNumber class]] || [msgBody[@"zoom"] isKindOfClass:[NSString class]] ? [msgBody[@"zoom"] doubleValue] : 1.0, 0.1), 3.0);
+        }
+                
+                
+        uint8_t orientVal = MIN(MAX([msgBody[@"orient"] isKindOfClass:[NSNumber class]] || [msgBody[@"orient"] isKindOfClass:[NSString class]] ? (uint8_t)[msgBody[@"orient"] intValue] : 0, 0), 3);
+        
+            
+        // [[ScreenCapture sharedCapture] updateDisplay];
+        JSTPixelImage *pixelImage = [[ScreenCapture sharedCapture] pixelImage];
+        
+        // perform rotate with pixel image
+        [pixelImage setOrientation:orientVal];
+                
+        NSData *imageData = nil;
+        NSString *contentType = nil;
+        if ([format isEqualToString:@"jpeg"] || fabs(1.0 - compressVal) > 1e-3) {
+            imageData = [pixelImage jpegRepresentationWithCompressionQuality:compressVal];
+            contentType = @"image/jpeg";
+        } else {
+            imageData = [pixelImage pngRepresentation];
+            contentType = @"image/png";
+        }
+                
+        GCDWebServerDataResponse * response = [GCDWebServerDataResponse responseWithData:imageData contentType:contentType];
+        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
+        [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
+        return response;
+    }];
     // 处理截图
     [webServer addHandlerForMethod:@"GET" path:@"/screenshot" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         NSString *quality = request.query[@"quality"];

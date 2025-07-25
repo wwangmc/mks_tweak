@@ -1,6 +1,6 @@
 THEOS_DEVICE_IP = localhost
 THEOS_DEVICE_PORT = 2222
-DEBUG = 0
+DEBUG = 1
 # FINALPACKAGE = 1
 
 # 定义打包模式常量
@@ -9,7 +9,7 @@ ROOTLESS = 1
 ROOTHIDE = 2
 
 # 默认使用 rootfull (0)，可通过命令行覆盖，如 `make TYPE=1` 选择 rootless
-TYPE ?= $(ROOTLESS)
+TYPE ?= $(ROOTFULL)
 
 TARGET = iphone:clang:latest:15.0
 ifeq ($(TYPE), $(ROOTLESS))
