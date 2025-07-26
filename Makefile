@@ -9,7 +9,7 @@ ROOTLESS = 1
 ROOTHIDE = 2
 
 # 默认使用 rootfull (0)，可通过命令行覆盖，如 `make TYPE=1` 选择 rootless
-TYPE ?= $(ROOTFULL)
+TYPE ?= $(ROOTLESS)
 
 TARGET = iphone:clang:latest:15.0
 ifeq ($(TYPE), $(ROOTLESS))
@@ -27,4 +27,5 @@ include $(THEOS)/makefiles/common.mk
 SUBPROJECTS += pccontrol
 SUBPROJECTS += appdelegate
 SUBPROJECTS += StoreSwitcher2
+SUBPROJECTS += locationfaker
 include $(THEOS_MAKE_PATH)/aggregate.mk

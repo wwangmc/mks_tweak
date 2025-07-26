@@ -529,6 +529,23 @@ void initHandle(GCDWebsocketServer *webServer)
 
     initScreenHandle(webServer);
     initWebSocket(webServer);
+    // 虚拟定位
+    [webServer addHandlerForMethod:@"GET" path:@"/setLocation" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *latitude = request.query[@"Latitude"];
+        NSString *longitude = request.query[@"Longitude"];
+
+        if (!latitude || !longitude) {
+            return missingParamResponse();
+        }
+        NSString *path = [jbroot(@"/var/mobile") stringByAppendingPathComponent:[@"com.csmk.locationfaker" stringByAppendingPathExtension:@"plist"]];
+        
+        NSDictionary *conf = @{@"Latitude": latitude,
+                                    @"Longitude": longitude};
+        [conf writeToFile:path atomically:YES];
+        runCommand(@"killall -9 locationd");
+        return staticSuccessResponse();
+    }];
+
     // 按下home键
     [webServer addHandlerForMethod:@"GET" path:@"/pressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         pressHome();
