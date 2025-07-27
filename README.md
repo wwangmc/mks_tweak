@@ -1,4 +1,4 @@
-可搭配iproxy实现usb有线传输 命令iproxy 8081:8081 以下api的ipHost可全替换localhost iproxy有依赖环境具体上网搜 一般装完爱思就有
+可搭配iproxy实现usb有线传输 命令iproxy 8081:8081 以下api的ipHost可全替换localhost iproxy有依赖环境具体上网搜 一般装完爱思就有 28.9050 118.5270
 
 [获取截屏] quality图片质量越低越差但会更流畅
 GET http://{ip}:8081/screenshot?quality=0.3

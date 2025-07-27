@@ -3,6 +3,7 @@
 #import <UIKit/UIKit.h>
 #include "GCDWebServerStreamedResponse.h"
 
+
 @interface Screen :NSObject
 + (void)setScreenSize:(CGFloat)x height:(CGFloat) y;
 + (void)setScreenPTSize:(CGFloat)x height:(CGFloat) y;
@@ -13,7 +14,11 @@
 + (CGFloat)getScale;
 + (CGRect)getBounds;
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality;
++ (NSData *)takeScreenshotWithQuality_v2:(CGFloat)quality;
 + (NSData *)takeScreenshot;
 @end
+
+// NSData *imageFromSurface();
+NSData *takeScreenshotFromSpringBoard(CGFloat quality);
 
 #endif

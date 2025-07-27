@@ -26,14 +26,14 @@
             location.longitude = [[conf objectForKey:@"Longitude"] doubleValue];
         }
     }
-    else {
-        /* Use Apple's HQ as default location */
-        NSDictionary *defaultConf = @{@"Latitude": @37.3349,
-                                    @"Longitude": @-122.0093};
-        [defaultConf writeToFile:path atomically:YES];
-        location.latitude = [defaultConf[@"Latitude"] doubleValue];
-        location.longitude = [defaultConf[@"Longitude"] doubleValue];
-    }
+    // else {
+    //     /* Use Apple's HQ as default location */
+    //     NSDictionary *defaultConf = @{@"Latitude": @37.3349,
+    //                                 @"Longitude": @-122.0093};
+    //     [defaultConf writeToFile:path atomically:YES];
+    //     location.latitude = [defaultConf[@"Latitude"] doubleValue];
+    //     location.longitude = [defaultConf[@"Longitude"] doubleValue];
+    // }
     
     if (conf) [conf release];
     
