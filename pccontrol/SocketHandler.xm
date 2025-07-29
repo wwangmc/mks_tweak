@@ -83,6 +83,17 @@ static NSTimer *_globalTimer;
         if(error){
             [self sendText:@"调用失败"];
         }
+    }else if([data_dict[@"type"] isEqualToString:@"home"]){
+        pressHome();
+    }else if([data_dict[@"type"] isEqualToString:@"inputText"]){
+        NSString *text = data_dict[@"data"];
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(1), @"task_content": text} deliverImmediately: true];
+    }else if([data_dict[@"type"] isEqualToString:@"moveCursor"]){
+        NSString *num = data_dict[@"data"];
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(3), @"task_content": num} deliverImmediately: true];
+    }else if([data_dict[@"type"] isEqualToString:@"backspace"]){
+        NSString *num = data_dict[@"data"];
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(4), @"task_content": num} deliverImmediately: true];
     }
 }
 @end
