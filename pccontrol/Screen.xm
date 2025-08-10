@@ -2,10 +2,7 @@
 #include "Common.h"
 #import <UIKit/UIKit.h>
 
-#include "headers/IOSurface/IOSurfaceAccelerator.h"
-#include "headers/IOSurface/IOMobileFramebuffer.h"
 #import "headers/IOSurface/IOSurface.h"
-#include "headers/IOSurface/CoreSurface.h"
 #import <IOSurface/IOSurfaceRef.h>
 
 // 像素高度及宽度

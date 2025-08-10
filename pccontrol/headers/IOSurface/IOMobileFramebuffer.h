@@ -9,8 +9,8 @@
  *
  */
 
-#import "IOTypes.h"
-#import "IOKitLib.h"
+#import <IOKit/IOTypes.h>
+#include <IOKit/IOKitLib.h>
 #import <UIKit/UIKit.h>
 
 #include <stdio.h> // For mprotect

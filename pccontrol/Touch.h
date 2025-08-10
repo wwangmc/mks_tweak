@@ -3,9 +3,9 @@
 
 #include "headers/IOHIDEvent.h"
 #include "headers/IOHIDEventData.h"
-#include "headers/IOHIDEventTypes.h"
+#include <IOKit/hid/IOHIDEventTypes.h>
 #include "headers/IOHIDEventSystemClient.h"
-#include "headers/IOHIDEventSystem.h"
+#include <IOKit/hid/IOHIDEventSystem.h>
 
 #include <mach/mach_time.h>
 

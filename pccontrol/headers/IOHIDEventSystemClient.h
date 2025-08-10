@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define IOHID_EVENT_SYSTEM_CLIENT_H
 
 #include <CoreFoundation/CoreFoundation.h>
-#include "IOHIDEventQueue.h"
+#include <IOKit/hid/IOHIDEventQueue.h>
 #include "IOHIDEvent.h"
 
 #if __cplusplus

@@ -2,7 +2,7 @@
 #define _IOSURFACE_ACCELERATOR_H 1
 
 #include "IOSurfaceAPI.h"
-#include "IOReturn.h"
+#include <IOKit/IOReturn.h>
 
 #if __cplusplus
 extern "C" {
