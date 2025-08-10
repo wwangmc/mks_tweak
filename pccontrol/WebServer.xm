@@ -489,6 +489,16 @@ void initHandle(GCDWebsocketServer *webServer)
 
     initScreenHandle(webServer);
     initWebSocket(webServer);
+
+    [webServer addHandlerForMethod:@"GET" path:@"/GPT_PATH" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *path = jbroot(@"/var/jb/var/mobile/gptdata/");
+        NSDictionary *response = @{
+                    @"status": @"success",
+                    @"data": path
+            };
+        return dataResponse(response);
+    }];
+
     // 虚拟定位
     [webServer addHandlerForMethod:@"GET" path:@"/setLocation" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         NSString *latitude = request.query[@"Latitude"];

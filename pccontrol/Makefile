@@ -6,8 +6,11 @@ TWEAK_NAME = pccontrol
 pccontrol_FILES = $(wildcard *.x*) $(wildcard GCDWebServer/**/*.m) $(wildcard screen/*.m)
 pccontrol_CFLAGS = -Wno-error -Wno-module-import-in-extern-c -fobjc-arc
 
-INCLUDE_PATHS := $(shell find GCDWebServer -type d)
-pccontrol_CFLAGS += $(INCLUDE_PATHS:%=-I%)
+# 定义需要包含的目录（可自由增删）
+SEARCH_DIRS := GCDWebServer
+
+# 自动查找所有目录并添加 -I 前缀
+pccontrol_CFLAGS += $(shell find $(SEARCH_DIRS) -type d | sed 's/^/-I/')
 
 # HEADER_PATHS := screen
 # pccontrol_CFLAGS += $(HEADER_PATHS:%=-I%)
