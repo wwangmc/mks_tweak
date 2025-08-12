@@ -1,5 +1,5 @@
 #import <Foundation/Foundation.h>
-#import "GCDWebsocketServerHandler.h"
+#import <GCDWebServers/GCDWebsocketServerHandler.h>
 
 
 @interface SocketHandler : GCDWebsocketServerHandler

@@ -3,22 +3,19 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = pccontrol
 
 # pccontrol_ARCHS =  arm64
-pccontrol_FILES = $(wildcard *.x*) $(wildcard GCDWebServer/**/*.m) $(wildcard screen/*.m)
-pccontrol_CFLAGS = -Wno-error -Wno-module-import-in-extern-c -fobjc-arc
+$(TWEAK_NAME)_FILES = $(wildcard *.x*) 
+$(TWEAK_NAME)_CFLAGS = -Wno-error -Wno-module-import-in-extern-c -fobjc-arc
 
 # 定义需要包含的目录（可自由增删）
-SEARCH_DIRS := GCDWebServer
+# SEARCH_DIRS := GCDWebServer
 
 # 自动查找所有目录并添加 -I 前缀
-pccontrol_CFLAGS += $(shell find $(SEARCH_DIRS) -type d | sed 's/^/-I/')
+# $(TWEAK_NAME)_CFLAGS += $(shell find $(SEARCH_DIRS) -type d -exec sh -c 'find {} -name "*.h" -print -quit | grep -q .' \; -print | sed 's/^/-I/')
 
-# HEADER_PATHS := screen
-# pccontrol_CFLAGS += $(HEADER_PATHS:%=-I%)
-# pccontrol_CFLAGS += -include screen-prefix.pch
-pccontrol_FRAMEWORKS = UIKit AssetsLibrary CoreMedia
-pccontrol_PRIVATE_FRAMEWORKS = IOKit IOSurface
-pccontrol_LIBRARIES = substrate
-
+$(TWEAK_NAME)_FRAMEWORKS = UIKit AssetsLibrary CoreMedia
+$(TWEAK_NAME)_PRIVATE_FRAMEWORKS = IOKit IOSurface
+$(TWEAK_NAME)_LIBRARIES = substrate
+$(TWEAK_NAME)_EXTRA_FRAMEWORKS = GCDWebServers
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 

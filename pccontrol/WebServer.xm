@@ -9,14 +9,14 @@
 #import "DeviceInfo.h"
 #import "AppStore.h"
 #import "Application.h"
-#import "GCDWebServerDataResponse.h"
-#import "GCDWebServerErrorResponse.h"
-#import "GCDWebServerDataRequest.h"
-#import "GCDWebServerStreamedResponse.h"
+#import <GCDWebServers/GCDWebServerDataResponse.h>
+#import <GCDWebServers/GCDWebServerErrorResponse.h>
+#import <GCDWebServers/GCDWebServerDataRequest.h>
+#import <GCDWebServers/GCDWebServerStreamedResponse.h>
 #import "Switcher.h"
 #import "SocketHandler.h"
 #import "DeviceConfigurator.h"
-#import "GCDWebsocketServer.h"
+#import <GCDWebServers/GCDWebsocketServer.h>
 #import <roothide.h>
 
 static GCDWebsocketServer *webServer = nil;

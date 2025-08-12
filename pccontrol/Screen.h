@@ -1,7 +1,7 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 #import <UIKit/UIKit.h>
-#include "GCDWebServerStreamedResponse.h"
+#import <GCDWebServers/GCDWebServerStreamedResponse.h>
 
 
 @interface Screen :NSObject

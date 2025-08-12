@@ -1,6 +1,6 @@
 #ifndef WEB_SERVER_H
 #define WEB_SERVER_H
-#import "GCDWebsocketServer.h"
+#import <GCDWebServers/GCDWebsocketServer.h>
 
 
 #define WEB_PORT 8081
