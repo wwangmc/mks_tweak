@@ -118,6 +118,7 @@ Get the size of the screen and set them.
     NSLog(@"take a screenshot");
     CGImageRef imageRef = [Screen createScreenShotCGImageRef];
     UIImage *image = [UIImage imageWithCGImage:imageRef];
+    CGImageRelease(imageRef);
     return UIImageJPEGRepresentation(image,quality);
 }
 
