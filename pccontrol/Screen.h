@@ -16,9 +16,8 @@
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality;
 + (NSData *)takeScreenshotWithQuality_v2:(CGFloat)quality;
 + (NSData *)takeScreenshot;
-@end
++ (CGImageRef)createScreenShotCGImageRef;
 
-// NSData *imageFromSurface();
-NSData *takeScreenshotFromSpringBoard(CGFloat quality);
+@end
 
 #endif

@@ -379,7 +379,7 @@ void initSettingHandle(GCDWebsocketServer *webServer)
 }
 void initScreenHandle(GCDWebsocketServer *webServer)
 {
-    [webServer addHandlerForMethod:@"GET" path:@"/screenshot_v2" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+    [webServer addHandlerForMethod:@"GET" path:@"/screenshot" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         NSString *quality = request.query[@"quality"];
         if(!quality){
             return missingParamResponse();
@@ -392,8 +392,9 @@ void initScreenHandle(GCDWebsocketServer *webServer)
         [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
         return response;
     }];
+
     // 处理截图
-    [webServer addHandlerForMethod:@"GET" path:@"/screenshot" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+    [webServer addHandlerForMethod:@"GET" path:@"/screenshot_v2" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         NSString *quality = request.query[@"quality"];
         if(!quality){
             return missingParamResponse();

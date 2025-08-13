@@ -16,6 +16,7 @@ static CGSize portraitSize;
 
 static CGFloat device_screen_scale = 0;
 OBJC_EXTERN void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef surface, int x, int y);
+OBJC_EXTERN CGImageRef UICreateCGImageFromIOSurface(IOSurfaceRef surface);
 
 @implementation Screen
 {
@@ -115,17 +116,9 @@ Get the size of the screen and set them.
 
 + (NSData *)takeScreenshotWithQuality_v2:(CGFloat)quality {
     NSLog(@"take a screenshot");
-    UIGraphicsBeginImageContextWithOptions(portraitSize, NO, device_screen_scale);
-    
-    for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-        [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:YES];
-    }
-    
-    UIImage *screenshot = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    return UIImageJPEGRepresentation(screenshot, quality);
-   
+    CGImageRef imageRef = [Screen createScreenShotCGImageRef];
+    UIImage *image = [UIImage imageWithCGImage:imageRef];
+    return UIImageJPEGRepresentation(image,quality);
 }
 
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality {
@@ -153,67 +146,61 @@ Get the size of the screen and set them.
     
     return UIImagePNGRepresentation(screenshot);
 }
++ (CGImageRef)createScreenShotCGImageRef {
+    // 静态变量（只计算一次）
+    static int bytesPerElement = 4;
+    static int bytesPerRow;
+    static NSNumber *IOSurfaceBytesPerElement;
+    static NSNumber *IOSurfaceBytesPerRow;
+    static NSNumber *IOSurfaceAllocSize;
+    static NSNumber *nheight;
+    static NSNumber *nwidth;
+    static NSNumber *IOSurfacePixelFormat;
+    static NSNumber *IOSurfaceIsGlobal;
+    static NSDictionary *propertiesTemplate;
 
+    // 使用 dispatch_once 确保线程安全初始化
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        bytesPerRow = roundUp(bytesPerElement * device_screen_width, 32);
+        
+        // 缓存 NSNumber 对象（避免重复创建）
+        IOSurfaceBytesPerElement = @(bytesPerElement);
+        IOSurfaceBytesPerRow = @(bytesPerRow);
+        IOSurfaceAllocSize = @(bytesPerRow * device_screen_height);
+        nheight = @(device_screen_height);
+        nwidth = @(device_screen_width);
+        IOSurfacePixelFormat = @(1111970369); // 固定值
+        IOSurfaceIsGlobal = @(1); // 固定值
 
+        // 字典模板（避免每次重新构建）
+        propertiesTemplate = @{
+            @"IOSurfaceAllocSize": IOSurfaceAllocSize,
+            @"IOSurfaceBytesPerElement": IOSurfaceBytesPerElement,
+            @"IOSurfaceBytesPerRow": IOSurfaceBytesPerRow,
+            @"IOSurfaceHeight": nheight,
+            @"IOSurfaceIsGlobal": IOSurfaceIsGlobal,
+            @"IOSurfacePixelFormat": IOSurfacePixelFormat,
+            @"IOSurfaceWidth": nwidth
+        };
+    });
 
+    // 创建 IOSurface
+    IOSurfaceRef screenSurface = IOSurfaceCreate((__bridge CFDictionaryRef)propertiesTemplate);
+    if (!screenSurface) return nil;
+
+    // 渲染截图
+    IOSurfaceLock(screenSurface, 0, NULL);
+    CARenderServerRenderDisplay(0, CFSTR("LCD"), screenSurface, 0, 0);
+
+    // 转换为 CGImage
+    CGImageRef cgImageRef = UICreateCGImageFromIOSurface(screenSurface);
+    
+    // 清理
+    IOSurfaceUnlock(screenSurface, 0, NULL);
+    CFRelease(screenSurface);
+
+    return cgImageRef;
+}
 @end
 
-
-NSData *imageFromSurface() {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-        
-    CGSize screenSize = [UIScreen mainScreen].bounds.size;
-    float scale = [UIScreen mainScreen].scale;
-    
-    NSInteger width, height;
-    // setup the width and height of the framebuffer for the device
-    if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
-        // iPhone frame buffer is Portrait
-        width = screenSize.width * scale;
-        height = screenSize.height * scale;
-    } else {
-        // iPad frame buffer is Landscape
-        width = screenSize.height * scale;
-        height = screenSize.width * scale;
-    }
-    
-    NSInteger bytesPerElement = 4;
-    NSInteger bytesPerRow = bytesPerElement * width;
-    NSInteger totalBytes = bytesPerRow * height;
-
-    NSDictionary *properties = @{
-        (__bridge NSString *)kIOSurfaceIsGlobal:@YES,
-        (__bridge NSString *)kIOSurfaceBytesPerElement:@(bytesPerElement),
-        (__bridge NSString *)kIOSurfaceBytesPerRow:@(bytesPerRow),
-        (__bridge NSString *)kIOSurfaceWidth:@(width),
-        (__bridge NSString *)kIOSurfaceHeight:@(height),
-        (__bridge NSString *)kIOSurfacePixelFormat:@(0x42475241),//'ARGB'
-        (__bridge NSString *)kIOSurfaceAllocSize:@(bytesPerRow * height)
-    };
-    
-    IOSurfaceRef surface = IOSurfaceCreate((__bridge CFDictionaryRef)properties);
-    
-    IOSurfaceLock(surface, 0, nil);
-    CARenderServerRenderDisplay(0, CFSTR("LCD"), surface, 0, 0);
-    void * baseAddr = IOSurfaceGetBaseAddress(surface);
-    NSData * data = [NSData dataWithBytes:baseAddr length:totalBytes];
-    IOSurfaceUnlock(surface, 0, 0);
-    
-    CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, data.bytes, data.length, NULL);
-    CGImageRef imageRef = CGImageCreate(width, height, 8, 8*bytesPerElement, bytesPerRow,
-                                        CGColorSpaceCreateDeviceRGB(),
-                                        kCGBitmapByteOrder32Host | kCGImageAlphaFirst,
-                                        provider, NULL, false, kCGRenderingIntentDefault);
-    
-    UIImage * image = [UIImage imageWithCGImage:imageRef];
-    // UIImage *screenshot = imageFromSurface(surface);
-    if (image) {
-        NSData *pngData = UIImagePNGRepresentation(image);
-        [pngData writeToFile:@"/var/mobile/screenshot.png" atomically:YES];
-        // NSLog(@"截图已保存到 /var/mobile/screenshot.png");
-    }
-    CGImageRelease(imageRef);
-    CFRelease(surface);
-    
-  });
-}
