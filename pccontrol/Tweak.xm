@@ -36,22 +36,22 @@ static void popupWindowCallBack(void* target, void* refcon, IOHIDServiceRef serv
         */
 
         int buttonId = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
-        if (buttonId == 46)
-        {
-            // 拨动输入密码
-            currPwd();
-            // 如果为15+拨动两下重启用户空间
-            if (@available(iOS 15.0, *)) {
-                CFTimeInterval currentTime = CACurrentMediaTime();
-                if (currentTime - siledStartTime > 2)
-                {
-                    siledStartTime = CACurrentMediaTime();
-                    return;
-                }
-                showAlertBox(@"按键检测", @"触发机关15+系统会重启用户空间", 2);
-                rebootUserspace();
-            }
-        }
+        // if (buttonId == 46)
+        // {
+        //     // 拨动输入密码
+        //     currPwd();
+        //     // 如果为15+拨动两下重启用户空间
+        //     if (@available(iOS 15.0, *)) {
+        //         CFTimeInterval currentTime = CACurrentMediaTime();
+        //         if (currentTime - siledStartTime > 2)
+        //         {
+        //             siledStartTime = CACurrentMediaTime();
+        //             return;
+        //         }
+        //         showAlertBox(@"按键检测", @"触发机关15+系统会重启用户空间", 2);
+        //         rebootUserspace();
+        //     }
+        // }
 
         // 音量减234 音量加233
         if (buttonId == 233 && IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown) == 0)

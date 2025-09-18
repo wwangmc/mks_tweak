@@ -3,6 +3,7 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = pccontrol
 
 # pccontrol_ARCHS =  arm64
+# $(shell find LookinServer -name "*.m")
 $(TWEAK_NAME)_FILES = $(wildcard *.x*) 
 $(TWEAK_NAME)_CFLAGS = -Wno-error -Wno-module-import-in-extern-c -fobjc-arc
 
