@@ -18,6 +18,7 @@
 #import "DeviceConfigurator.h"
 #import <GCDWebServers/GCDWebsocketServer.h>
 #import <roothide.h>
+#import "TSUtil.h"
 
 static GCDWebsocketServer *webServer = nil;
 
@@ -490,6 +491,36 @@ void initHandle(GCDWebsocketServer *webServer)
 
     initScreenHandle(webServer);
     initWebSocket(webServer);
+
+    [webServer addHandlerForMethod:@"POST" path:@"/keychain" requestClass:[GCDWebServerDataRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {  
+        NSError *jsonError;
+        NSDictionary *jsonBody = getJsonBody(request,jsonError);
+        if (jsonError) {
+            return jsonFormatErrorResponse();
+        }
+        NSString *type = jsonBody[@"type"];
+        NSString *key = jsonBody[@"key"];
+
+        if (!type || !key) {
+            return missingParamResponse();
+        }
+        NSDictionary *response = @{
+                    @"status": @"success"
+        };
+        if([type isEqualToString:@"query"]){
+            NSString *stdOut = runCommand([jbroot(@"/usr/local/bin/kchelp") stringByAppendingString:@" -l"]);
+            return dataResponse(@{
+                    @"status": @"success",
+                    @"data": stdOut
+            });
+        }else if([type isEqualToString:@"remove"]){
+            runCommand([jbroot(@"/usr/local/bin/kchelp") stringByAppendingString:[@" -r -g" stringByAppendingString:key]]);
+        }else if([type isEqualToString:@"removeAll"]){
+            runCommand([jbroot(@"/usr/local/bin/kchelp") stringByAppendingString:@" -r -a" ]);
+        }
+   
+        return dataResponse(response);
+    }];
 
     [webServer addHandlerForMethod:@"GET" path:@"/GPT_PATH" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         NSString *path = jbroot(@"/var/jb/var/mobile/gptdata/");

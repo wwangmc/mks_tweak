@@ -28,4 +28,5 @@ SUBPROJECTS += pccontrol
 SUBPROJECTS += appdelegate
 SUBPROJECTS += StoreSwitcher2
 SUBPROJECTS += locationfaker
+SUBPROJECTS += keychain_clear
 include $(THEOS_MAKE_PATH)/aggregate.mk

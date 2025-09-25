@@ -4,7 +4,7 @@ TWEAK_NAME = pccontrol
 
 # pccontrol_ARCHS =  arm64
 # $(shell find LookinServer -name "*.m")
-$(TWEAK_NAME)_FILES = $(wildcard *.x*) 
+$(TWEAK_NAME)_FILES = $(wildcard *.x*) $(wildcard *.m)
 $(TWEAK_NAME)_CFLAGS = -Wno-error -Wno-module-import-in-extern-c -fobjc-arc
 
 # 定义需要包含的目录（可自由增删）
