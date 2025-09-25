@@ -492,6 +492,24 @@ void initHandle(GCDWebsocketServer *webServer)
     initScreenHandle(webServer);
     initWebSocket(webServer);
 
+
+    [webServer addHandlerForMethod:@"POST" path:@"/keypress" requestClass:[GCDWebServerDataRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {  
+        NSError *jsonError;
+        NSDictionary *jsonBody = getJsonBody(request,jsonError);
+        if (jsonError) {
+            return jsonFormatErrorResponse();
+        }
+
+        NSString *text = jsonBody[@"text"];
+
+        if (!text) {
+            return missingParamResponse();
+        }
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(5), @"task_content": text} deliverImmediately: true];
+
+        return staticSuccessResponse();
+    }];
+
     [webServer addHandlerForMethod:@"POST" path:@"/keychain" requestClass:[GCDWebServerDataRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {  
         NSError *jsonError;
         NSDictionary *jsonBody = getJsonBody(request,jsonError);
