@@ -18,7 +18,6 @@
 #import "DeviceConfigurator.h"
 #import <GCDWebServers/GCDWebsocketServer.h>
 #import <roothide.h>
-#import "TSUtil.h"
 
 static GCDWebsocketServer *webServer = nil;
 
@@ -408,8 +407,18 @@ void initScreenHandle(GCDWebsocketServer *webServer)
         [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
         return response;
     }];
-    // 原图截图
+
     [webServer addHandlerForMethod:@"GET" path:@"/screenshot_original" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+
+        NSData *imageData = [Screen takeScreenshot_v2];
+
+        GCDWebServerDataResponse * response = [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
+        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
+        [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
+        return response;
+    }];
+    // 原图截图
+    [webServer addHandlerForMethod:@"GET" path:@"/screenshot_original_old" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
   
         NSData *imageData = [Screen takeScreenshot];
 

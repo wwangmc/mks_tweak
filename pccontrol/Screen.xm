@@ -135,6 +135,12 @@ Get the size of the screen and set them.
     
     return UIImageJPEGRepresentation(screenshot, quality);
 }
++ (NSData *)takeScreenshot_v2 {
+    CGImageRef imageRef = [Screen createScreenShotCGImageRef];
+    UIImage *image = [UIImage imageWithCGImage:imageRef];
+    CGImageRelease(imageRef);
+    return UIImagePNGRepresentation(image);
+}
 + (NSData *)takeScreenshot {
     UIGraphicsBeginImageContextWithOptions(portraitSize, NO, device_screen_scale);
     
