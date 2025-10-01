@@ -1,7 +1,7 @@
 #import <UIKit/UIKit.h>
 #import <Security/Security.h>
 #import <sqlite3.h>
-
+#import "kern_memorystatus.h"
 
 void deleteKeychainObjectsForGroup(NSString * group)
 {
@@ -111,6 +111,21 @@ NSArray * getAllKeychainGroups()
 
 int main(int argc, char **argv, char **envp) {
 
+    int rc;
+    
+    memorystatus_priority_properties_t props = {0, JETSAM_PRIORITY_CRITICAL};
+    rc = memorystatus_control(MEMORYSTATUS_CMD_SET_PRIORITY_PROPERTIES, getpid(), 0, &props, sizeof(props));
+    if (rc < 0) { perror ("memorystatus_control"); exit(rc);}
+    
+    rc = memorystatus_control(MEMORYSTATUS_CMD_SET_JETSAM_HIGH_WATER_MARK, getpid(), -1, NULL, 0);
+    if (rc < 0) { perror ("memorystatus_control"); exit(rc);}
+    
+    rc = memorystatus_control(MEMORYSTATUS_CMD_SET_PROCESS_IS_MANAGED, getpid(), 0, NULL, 0);
+    if (rc < 0) { perror ("memorystatus_control"); exit(rc);}
+    
+    rc = memorystatus_control(MEMORYSTATUS_CMD_SET_PROCESS_IS_FREEZABLE, getpid(), 0, NULL, 0);
+    if (rc < 0) { perror ("memorystatus_control"); exit(rc); }
+    
     NSArray *arguments = [[NSProcessInfo processInfo] arguments];
 	
 	for(int i= 0; i<arguments.count;i++)
