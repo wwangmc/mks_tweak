@@ -532,18 +532,21 @@ void initHandle(GCDWebsocketServer *webServer)
             return missingParamResponse();
         }
         NSDictionary *response = @{
-                    @"status": @"success"
+            @"status": @"success"
         };
+
+
+        NSString *kc = jbroot(@"/usr/local/bin/keychain_clear");
         if([type isEqualToString:@"query"]){
-            NSString *stdOut = runCommand([jbroot(@"/usr/local/bin/kchelp") stringByAppendingString:@" -l"]);
+            NSString *stdOut = runCommand([kc stringByAppendingString:@" -l"]);
             return dataResponse(@{
                     @"status": @"success",
                     @"data": stdOut
             });
         }else if([type isEqualToString:@"remove"]){
-            runCommand([jbroot(@"/usr/local/bin/kchelp") stringByAppendingString:[@" -r -g" stringByAppendingString:key]]);
+            runCommand([kc stringByAppendingString:[@" -r -g" stringByAppendingString:key]]);
         }else if([type isEqualToString:@"removeAll"]){
-            runCommand([jbroot(@"/usr/local/bin/kchelp") stringByAppendingString:@" -r -a" ]);
+            runCommand([kc stringByAppendingString:@" -r -a" ]);
         }
    
         return dataResponse(response);

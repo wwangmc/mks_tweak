@@ -1,12 +1,11 @@
-
 include $(THEOS)/makefiles/common.mk
 
-TOOL_NAME = kchelp
+TOOL_NAME = roothelp
 
-kchelp_FILES = $(wildcard *.m)
-kchelp_CFLAGS = -Wno-error -Wno-module-import-in-extern-c -fobjc-arc
-kchelp_CODESIGN_FLAGS = -Sentitlements.plist
-kchelp_INSTALL_PATH = /usr/local/bin
+roothelp_FILES = $(wildcard *.m)
+roothelp_CFLAGS = -Wno-error -Wno-module-import-in-extern-c -fobjc-arc
+roothelp_CODESIGN_FLAGS = -Sentitlements.plist
+roothelp_INSTALL_PATH = /usr/local/bin
 
 # 定义需要包含的目录（可自由增删）
 # SEARCH_DIRS := GCDWebServer

@@ -18,9 +18,10 @@ NSString *runCommand(NSString *command) {
     posix_spawn_file_actions_adddup2(&actions, pipefd[1], STDERR_FILENO);
     posix_spawn_file_actions_addclose(&actions, pipefd[0]);
 
-    // 分割命令
-    const char *argv[] = {jbroot("/bin/sh"), "-c", [command UTF8String], NULL};
-    int status = posix_spawn(&pid, jbroot("/bin/sh"), &actions, NULL, (char *const *)argv, NULL);
+    // 使用 roothelp 执行命令
+    const char *roothelpPath = jbroot("/usr/local/bin/roothelp");
+    const char *argv[] = {roothelpPath, [command UTF8String], NULL};
+    int status = posix_spawn(&pid, roothelpPath, &actions, NULL, (char *const *)argv, NULL);
     close(pipefd[1]);
 
     // 读取命令输出
