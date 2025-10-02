@@ -544,7 +544,7 @@ void initHandle(GCDWebsocketServer *webServer)
                     @"data": stdOut
             });
         }else if([type isEqualToString:@"remove"]){
-            runCommand([kc stringByAppendingString:[@" -r -g" stringByAppendingString:key]]);
+            runCommand([kc stringByAppendingString:[@" -r -g " stringByAppendingString:key]]);
         }else if([type isEqualToString:@"removeAll"]){
             runCommand([kc stringByAppendingString:@" -r -a" ]);
         }
