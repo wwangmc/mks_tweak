@@ -23,6 +23,5 @@ NSArray * getAllAccount();
 
 NSString * currAccount();
 
-NSString * currPwd();
 
 #endif
