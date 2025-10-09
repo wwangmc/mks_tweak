@@ -1,16 +1,16 @@
 
-#import <IOKit/hid/IOHIDService.h>
+// #import <IOKit/hid/IOHIDService.h>
 #include <CoreFoundation/CFUserNotification.h>
-
-#import "Touch.h"
+#include "IOKit+SPI.h"
 #import "Common.h"
 #import "Screen.h"
 #import "AlertBox.h"
 #import "WebServer.h"
 #import "AppStore.h"
 #import "Process.h"
+#import "STHIDEventGenerator.h"
 
-void *(*IOHIDEventAppendEventOld)(IOHIDEventRef parent, IOHIDEventRef child);
+// void *(*IOHIDEventAppendEventOld)(IOHIDEventRef parent, IOHIDEventRef child);
 
 
 IOHIDEventSystemClientRef ioHIDEventSystemForPopupDectect = NULL;
@@ -100,9 +100,9 @@ void startPopupListeningCallBack()
     [Screen setScreenScale:screen_scale];    
 
     [Screen setScreenPTSize:(width<height?width:height) height:(width>height?width:height)];  
-    initSenderId();
+    // initSenderId();
     // init touch screensize. Temporarily put this line here. Will be removed.
-    initTouchGetScreenSize();
+    // initTouchGetScreenSize();
 
     startWebServer();
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{  

@@ -33,8 +33,6 @@
 #import <objc/runtime.h>
 #import <UIKit/UIKit.h>
 
-// #import "GeneratedTouchesDebugWindow.h"
-
 
 NSString *const TopLevelEventInfoKey = @"eventInfo";
 NSString *const SecondLevelEventsKey = @"events";
@@ -229,13 +227,11 @@ NS_INLINE void DTXCalcLinearPinchStartEndPoints(CGRect bounds, CGFloat pixelsSca
     IOMobileFramebufferGetMainDisplay(&framebufferConnection);
     IOMobileFramebufferGetDisplaySize(framebufferConnection, &_screenSize);
     
+    NSLog(@"_screenSize (%.2f, %.2f)", _screenSize.width, _screenSize.height);
 
     for (NSUInteger i = 0; i < HIDMaxTouchCount; ++i)
         _activePoints[i].identifier = fingerIdentifiers[i];
     
-#if DEBUG
-    _shouldShowTouches = YES;
-#endif
 
     return self;
 }
@@ -366,7 +362,7 @@ static InterpolationType interpolationFromString(NSString *string)
         if (self.shouldShowTouches) {
             NSUInteger i = [touchInfo[HIDEventTouchIDKey] intValue];
             CGPoint point = CGPointMake([touchInfo[HIDEventXKey] doubleValue], [touchInfo[HIDEventYKey] doubleValue]);
-        }
+         }
 
         IOHIDDigitizerEventMask childEventMask = [touchInfo[HIDEventMaskKey] unsignedIntValue];
 
@@ -1158,7 +1154,9 @@ static inline uint32_t hidUsageCodeForCharacter(NSString *key)
 - (void)dispatchEventWithInfo:(NSDictionary *)eventInfo {
     assert([NSThread isMainThread]);
 
+    NSLog(@"dispatch event %@", eventInfo);
     IOHIDEventRef eventRef = [self _createIOHIDEventWithInfo:eventInfo];
+    NSLog(@"created event %@", eventRef);
     
     _sendHIDEvent(eventRef);
     CFRelease(eventRef);
@@ -1209,7 +1207,8 @@ static inline uint32_t hidUsageCodeForCharacter(NSString *key)
                         newTouch[HIDEventPressureKey] = @(interpolations[interpolationType]([startTouch[HIDEventPressureKey] doubleValue], [endTouch[HIDEventPressureKey] doubleValue], timeRatio));
 
                     [newTouches addObject:newTouch];
-                } 
+                } else
+                    NSLog(@"missing end touch with id: %ld", (long)startTouchID);
             }
 
             newEvent[HIDEventTouchesKey] = newTouches;
@@ -1250,6 +1249,7 @@ static inline uint32_t hidUsageCodeForCharacter(NSString *key)
     CFAbsoluteTime startTime = CFAbsoluteTimeGetCurrent();
 
     NSArray <NSDictionary *> *expandedEvents = [self expandEvents:events withStartTime:startTime];
+    NSLog(@"expanded events %@", expandedEvents);
 
     for (NSDictionary *eventInfo in expandedEvents) {
         NSTimeInterval eventRelativeTime = [eventInfo[HIDEventTimeOffsetKey] doubleValue];

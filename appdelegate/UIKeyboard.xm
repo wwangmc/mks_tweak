@@ -7,7 +7,6 @@
 #import <execinfo.h>
 #import <mach-o/dyld.h>
 #include <substrate.h>
-#import "STHIDEventGenerator.h"
 
 #define INSERT_TEXT 1
 #define VIRTUAL_KEYBOARD 2
@@ -128,21 +127,7 @@
             }
             NSLog(@"com.zjx.appdelegate: delete characters by amount: %d", numOfCharacterToDel);
         }
-        else if(taskId == KEY_PRESS)
-        {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                NSString *text = data[@"task_content"];
-                
-                // 遍历字符串中的每个字符
-                for (NSInteger i = 0; i < text.length; i++) {
-                    // 使用dispatch_after实现延时
-                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(i * 0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                        NSString *singleChar = [text substringWithRange:NSMakeRange(i, 1)];
-                        [[STHIDEventGenerator sharedSTHIDEventGenerator] keyPress:singleChar];
-                    });
-                }
-            });
-        }
+
 
 	}
 

@@ -1,6 +1,5 @@
 #import "WebServer.h"
 #import "Screen.h"
-#import "Touch.h"
 #import <Foundation/NSDistributedNotificationCenter.h>
 #import "SysExecutor.h"
 #import "Process.h"
@@ -18,7 +17,7 @@
 #import "DeviceConfigurator.h"
 #import <GCDWebServers/GCDWebsocketServer.h>
 #import <roothide.h>
-
+#import "STHIDEventGenerator.h"
 static GCDWebsocketServer *webServer = nil;
 
 NSDictionary* getJsonBody(GCDWebServerDataRequest *request,NSError *jsonError)
@@ -514,7 +513,16 @@ void initHandle(GCDWebsocketServer *webServer)
         if (!text) {
             return missingParamResponse();
         }
-        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(5), @"task_content": text} deliverImmediately: true];
+        dispatch_async(dispatch_get_main_queue(), ^{            
+            // 遍历字符串中的每个字符
+            for (NSInteger i = 0; i < text.length; i++) {
+                // 使用dispatch_after实现延时
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(i * 0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    NSString *singleChar = [text substringWithRange:NSMakeRange(i, 1)];
+                    [[STHIDEventGenerator sharedSTHIDEventGenerator] keyPress:singleChar];
+                });
+            }
+        });
 
         return staticSuccessResponse();
     }];
@@ -580,12 +588,12 @@ void initHandle(GCDWebsocketServer *webServer)
 
     // 按下home键
     [webServer addHandlerForMethod:@"GET" path:@"/pressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        pressHome();
+        [[STHIDEventGenerator sharedSTHIDEventGenerator] menuPress];
         return staticSuccessResponse();
     }];
     // 双击home
     [webServer addHandlerForMethod:@"GET" path:@"/doublePressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        doublePressHome();
+        [[STHIDEventGenerator sharedSTHIDEventGenerator] menuPress];
         return staticSuccessResponse();
     }];
     // 隐藏键盘
@@ -683,21 +691,30 @@ void initHandle(GCDWebsocketServer *webServer)
                       requestClass:[GCDWebServerDataRequest class] // 必须是 DataRequest 才能读取 Body
                       processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
 
-                          NSError *jsonError;
-                          NSDictionary *jsonBody = getJsonBody(request,jsonError);
-                          if (jsonError) {
-                              return jsonFormatErrorResponse();
-                          }
+                            NSError *jsonError;
+                            NSDictionary *jsonBody = getJsonBody(request,jsonError);
+                            if (jsonError) {
+                                return jsonFormatErrorResponse();
+                            }
 
-                          NSError *error = nil;
-                          jsonToEventDataAndPerform(jsonBody, &error);
-                          if (error) {
-                              return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
-                                                                                message:@"点击异常"];
-                          }
-
-                          return staticSuccessResponse();
-                      }];
+                            NSNumber *xValue = jsonBody[@"x"];
+                            NSNumber *yValue = jsonBody[@"y"];
+                            CGPoint point = CGPointMake(xValue.floatValue, yValue.floatValue);
+                            NSNumber *indexValue = jsonBody[@"index"];
+                            NSString *typeValue = jsonBody[@"type"];
+                            // jsonToEventDataAndPerform(jsonBody, &error);
+                            if ([typeValue isEqualToString:@"down"] || [typeValue isEqualToString:@"move"]) {
+                                [[STHIDEventGenerator sharedSTHIDEventGenerator] touchDown:point];
+                            }  else if ([typeValue isEqualToString:@"up"]) {
+                                [[STHIDEventGenerator sharedSTHIDEventGenerator] liftUp:point];
+                            }else if ([typeValue isEqualToString:@"tap"]) {
+                                [[STHIDEventGenerator sharedSTHIDEventGenerator] tap:point];
+                            }  else {
+                                      return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
+                                                                                    message:@"点击异常"];
+                            }           
+                            return staticSuccessResponse();
+                        }];
 
     //获取设备信息
     [webServer addHandlerForMethod:@"GET"
