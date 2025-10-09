@@ -519,7 +519,7 @@ void initHandle(GCDWebsocketServer *webServer)
                 // 使用dispatch_after实现延时
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(i * 0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     NSString *singleChar = [text substringWithRange:NSMakeRange(i, 1)];
-                    [[STHIDEventGenerator sharedSTHIDEventGenerator] keyPress:singleChar];
+                    [[STHIDEventGenerator sharedGenerator] keyPress:singleChar];
                 });
             }
         });
@@ -588,12 +588,12 @@ void initHandle(GCDWebsocketServer *webServer)
 
     // 按下home键
     [webServer addHandlerForMethod:@"GET" path:@"/pressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        [[STHIDEventGenerator sharedSTHIDEventGenerator] menuPress];
+        [[STHIDEventGenerator sharedGenerator] menuPress];
         return staticSuccessResponse();
     }];
     // 双击home
     [webServer addHandlerForMethod:@"GET" path:@"/doublePressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        [[STHIDEventGenerator sharedSTHIDEventGenerator] menuPress];
+        [[STHIDEventGenerator sharedGenerator] menuPress];
         return staticSuccessResponse();
     }];
     // 隐藏键盘
@@ -704,11 +704,11 @@ void initHandle(GCDWebsocketServer *webServer)
                             NSString *typeValue = jsonBody[@"type"];
                             // jsonToEventDataAndPerform(jsonBody, &error);
                             if ([typeValue isEqualToString:@"down"] || [typeValue isEqualToString:@"move"]) {
-                                [[STHIDEventGenerator sharedSTHIDEventGenerator] touchDown:point];
+                                [[STHIDEventGenerator sharedGenerator] touchDown:point];
                             }  else if ([typeValue isEqualToString:@"up"]) {
-                                [[STHIDEventGenerator sharedSTHIDEventGenerator] liftUp:point];
+                                [[STHIDEventGenerator sharedGenerator] liftUp:point];
                             }else if ([typeValue isEqualToString:@"tap"]) {
-                                [[STHIDEventGenerator sharedSTHIDEventGenerator] tap:point];
+                                [[STHIDEventGenerator sharedGenerator] tap:point];
                             }  else {
                                       return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
                                                                                     message:@"点击异常"];

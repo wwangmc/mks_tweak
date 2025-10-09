@@ -4,6 +4,7 @@
 #import "Request.h"
 #import "Screen.h"
 #import "STHIDEventGenerator.h"
+
 static NSTimer *_globalTimer;
 @interface SocketHandler ()
 @end
@@ -86,16 +87,16 @@ static NSTimer *_globalTimer;
         NSString *typeValue = jsonBody[@"type"];
         // jsonToEventDataAndPerform(jsonBody, &error);
         if ([typeValue isEqualToString:@"down"] || [typeValue isEqualToString:@"move"]) {
-            [[STHIDEventGenerator sharedSTHIDEventGenerator] touchDown:point];
+            [[STHIDEventGenerator sharedGenerator] touchDown:point];
         }  else if ([typeValue isEqualToString:@"up"]) {
-            [[STHIDEventGenerator sharedSTHIDEventGenerator] liftUp:point];
+            [[STHIDEventGenerator sharedGenerator] liftUp:point];
         }else if ([typeValue isEqualToString:@"tap"]) {
-            [[STHIDEventGenerator sharedSTHIDEventGenerator] tap:point];
+            [[STHIDEventGenerator sharedGenerator] tap:point];
         }  else {
             [self sendText:@"调用失败"];
         } 
     }else if([data_dict[@"type"] isEqualToString:@"home"]){
-        [[STHIDEventGenerator sharedSTHIDEventGenerator] menuDoublePress];
+        [[STHIDEventGenerator sharedGenerator] menuDoublePress];
     }else if([data_dict[@"type"] isEqualToString:@"inputText"]){
         NSString *text = data_dict[@"data"];
         [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(1), @"task_content": text} deliverImmediately: true];

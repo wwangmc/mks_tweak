@@ -1,90 +1,121 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
- * THE POSSIBILITY OF SUCH DAMAGE.
- */
+ This file is part of TrollVNC
+ Copyright (c) 2025 82Flex <82flex@gmail.com> and contributors
 
-#import "IOKitSPI.h"
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License version 2
+ as published by the Free Software Foundation.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+#ifndef STHIDEventGenerator_h
+#define STHIDEventGenerator_h
+
 #import <CoreGraphics/CGGeometry.h>
+#import <Foundation/Foundation.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
+#pragma mark -
 
 // Keys for `sendEventStream:`.
-OBJC_EXTERN NSString *const TopLevelEventInfoKey;
-OBJC_EXTERN NSString *const SecondLevelEventsKey;
-OBJC_EXTERN NSString *const HIDEventInputType;
-OBJC_EXTERN NSString *const HIDEventTimeOffsetKey;
-OBJC_EXTERN NSString *const HIDEventTouchesKey;
-OBJC_EXTERN NSString *const HIDEventPhaseKey;
-OBJC_EXTERN NSString *const HIDEventInterpolateKey;
-OBJC_EXTERN NSString *const HIDEventTimestepKey;
-OBJC_EXTERN NSString *const HIDEventCoordinateSpaceKey;
-OBJC_EXTERN NSString *const HIDEventStartEventKey;
-OBJC_EXTERN NSString *const HIDEventEndEventKey;
-OBJC_EXTERN NSString *const HIDEventTouchIDKey;
-OBJC_EXTERN NSString *const HIDEventPressureKey;
-OBJC_EXTERN NSString *const HIDEventXKey;
-OBJC_EXTERN NSString *const HIDEventYKey;
-OBJC_EXTERN NSString *const HIDEventTwistKey;
-OBJC_EXTERN NSString *const HIDEventMaskKey;
-OBJC_EXTERN NSString *const HIDEventMajorRadiusKey;
-OBJC_EXTERN NSString *const HIDEventMinorRadiusKey;
-OBJC_EXTERN NSString *const HIDEventFingerKey;
+static NSString *const TopLevelEventInfoKey = @"eventInfo";
+static NSString *const SecondLevelEventsKey = @"events";
+static NSString *const HIDEventInputType = @"inputType";
+static NSString *const HIDEventTimeOffsetKey = @"timeOffset";
+static NSString *const HIDEventTouchesKey = @"touches";
+static NSString *const HIDEventPhaseKey = @"phase";
+static NSString *const HIDEventInterpolateKey = @"interpolate";
+static NSString *const HIDEventTimestepKey = @"timestep";
+static NSString *const HIDEventCoordinateSpaceKey = @"coordinateSpace";
+static NSString *const HIDEventStartEventKey = @"startEvent";
+static NSString *const HIDEventEndEventKey = @"endEvent";
+static NSString *const HIDEventTouchIDKey = @"id";
+static NSString *const HIDEventPressureKey = @"pressure";
+static NSString *const HIDEventXKey = @"x";
+static NSString *const HIDEventYKey = @"y";
+static NSString *const HIDEventTwistKey = @"twist";
+static NSString *const HIDEventMaskKey = @"mask";
+static NSString *const HIDEventMajorRadiusKey = @"majorRadius";
+static NSString *const HIDEventMinorRadiusKey = @"minorRadius";
+static NSString *const HIDEventFingerKey = @"finger";
 
 // Values for HIDEventInputType.
-OBJC_EXTERN NSString *const HIDEventInputTypeHand;
-OBJC_EXTERN NSString *const HIDEventInputTypeFinger;
-OBJC_EXTERN NSString *const HIDEventInputTypeStylus;
+static NSString *const HIDEventInputTypeHand = @"hand";
+static NSString *const HIDEventInputTypeFinger = @"finger";
+static NSString *const HIDEventInputTypeStylus = @"stylus";
 
 // Values for HIDEventCoordinateSpaceKey.
-OBJC_EXTERN NSString *const HIDEventCoordinateSpaceTypeGlobal;
-OBJC_EXTERN NSString *const HIDEventCoordinateSpaceTypeContent;
+static NSString *const HIDEventCoordinateSpaceTypeGlobal = @"global";
+static NSString *const HIDEventCoordinateSpaceTypeContent = @"content";
 
-OBJC_EXTERN NSString *const HIDEventInterpolationTypeLinear;
-OBJC_EXTERN NSString *const HIDEventInterpolationTypeSimpleCurve;
+static NSString *const HIDEventInterpolationTypeLinear = @"linear";
+static NSString *const HIDEventInterpolationTypeSimpleCurve = @"simpleCurve";
 
 // Values for HIDEventPhaseKey.
-OBJC_EXTERN NSString *const HIDEventPhaseBegan;
-OBJC_EXTERN NSString *const HIDEventPhaseMoved;
-OBJC_EXTERN NSString *const HIDEventPhaseEnded;
-OBJC_EXTERN NSString *const HIDEventPhaseCanceled;
+static NSString *const HIDEventPhaseBegan = @"began";
+static NSString *const HIDEventPhaseStationary = @"stationary";
+static NSString *const HIDEventPhaseMoved = @"moved";
+static NSString *const HIDEventPhaseEnded = @"ended";
+static NSString *const HIDEventPhaseCanceled = @"canceled";
 
 // Values for touch counts, etc, to keep debug code in sync
 
-OBJC_EXTERN NSUInteger const HIDMaxTouchCount;
+static NSUInteger const HIDMaxTouchCount = 30;
+
+#pragma mark -
+
+#define SZ_USLEEP(us)                                                                                                  \
+    {                                                                                                                  \
+        struct timeval ___delay___;                                                                                    \
+        ___delay___.tv_sec = 0;                                                                                        \
+        if (((int)us) > (USEC_PER_SEC)) {                                                                              \
+            ___delay___.tv_sec = ((int)us) / (USEC_PER_SEC);                                                           \
+        }                                                                                                              \
+        ___delay___.tv_usec = ((int)us) % (USEC_PER_SEC);                                                              \
+        select(0, NULL, NULL, NULL, &___delay___);                                                                     \
+    }
+
+__used NS_INLINE void STAccurateSleep(NSTimeInterval seconds) {
+    int us = (int)round(seconds * USEC_PER_SEC);
+    if (us <= 0) {
+        us = 1;
+    }
+    int s = us / USEC_PER_SEC;
+    us %= USEC_PER_SEC;
+    if (0 != s) {
+        for (int i = 0; i < s; ++i) {
+            struct timeval tv;
+            tv.tv_sec = 1;
+            tv.tv_usec = 0;
+            select(0, NULL, NULL, NULL, &tv);
+        }
+    }
+    SZ_USLEEP(us);
+}
+
+#pragma mark -
 
 @interface STHIDEventGenerator : NSObject
 
-@property (nonatomic, assign) BOOL shouldShowTouches;
++ (STHIDEventGenerator *)sharedGenerator;
 
-+ (STHIDEventGenerator *)sharedSTHIDEventGenerator;
+// Keep-Alive: interval in seconds. 0 disables the timer (default 0).
+@property (nonatomic) NSTimeInterval keepAliveInterval;
 
 /* MARK: --- Touches --- */
 
 - (void)touchDown:(CGPoint)location;
 - (void)liftUp:(CGPoint)location;
-- (void)touchDown:(CGPoint)location
-       touchCount:(NSUInteger)count;
-- (void)liftUp:(CGPoint)location
-    touchCount:(NSUInteger)count;
+- (void)touchDown:(CGPoint)location touchCount:(NSUInteger)count;
+- (void)liftUp:(CGPoint)location touchCount:(NSUInteger)count;
 
 /* MARK: --- Stylus --- */
 
@@ -122,9 +153,9 @@ OBJC_EXTERN NSUInteger const HIDMaxTouchCount;
 
 // sync 0.05 * tapCount + MAX(0.15, delay) * (tapCount - 1)
 - (void)sendTaps:(NSUInteger)tapCount
-        location:(CGPoint)location
- numberOfTouches:(NSUInteger)touchCount
-delayBetweenTaps:(NSTimeInterval)delay;
+            location:(CGPoint)location
+     numberOfTouches:(NSUInteger)touchCount
+    delayBetweenTaps:(NSTimeInterval)delay;
 
 /* MARK: --- Long Press --- */
 
@@ -134,25 +165,19 @@ delayBetweenTaps:(NSTimeInterval)delay;
 /* MARK: --- Drags --- */
 
 // sync seconds
-- (void)dragLinearWithStartPoint:(CGPoint)startLocation
-                        endPoint:(CGPoint)endLocation
-                        duration:(NSTimeInterval)seconds;
+- (void)dragLinearWithStartPoint:(CGPoint)startLocation endPoint:(CGPoint)endLocation duration:(NSTimeInterval)seconds;
 
 // sync seconds
-- (void)dragCurveWithStartPoint:(CGPoint)startLocation
-                       endPoint:(CGPoint)endLocation
-                       duration:(NSTimeInterval)seconds;
+- (void)dragCurveWithStartPoint:(CGPoint)startLocation endPoint:(CGPoint)endLocation duration:(NSTimeInterval)seconds;
 
 /* MARK: --- Pinches --- */
 
 // sync seconds
-- (void)pinchLinearInBounds:(CGRect)bounds
-                      scale:(CGFloat)scale
-                      angle:(CGFloat)angle
-                   duration:(NSTimeInterval)seconds;
+- (void)pinchLinearInBounds:(CGRect)bounds scale:(CGFloat)scale angle:(CGFloat)angle duration:(NSTimeInterval)seconds;
 
 /* MARK: --- Event Stream --- */
 
+// async calculated
 - (void)sendEventStream:(NSDictionary *)eventInfo;
 
 /* MARK: --- ASCII Keyboard --- */
@@ -167,9 +192,6 @@ delayBetweenTaps:(NSTimeInterval)delay;
 
 // sync 0.05
 - (void)menuPress;
-
-- (void)muteDown;  // not likely to use but preserved
-- (void)muteUp;    // not likely to use but preserved
 
 // sync 0.05 + 0.15 + 0.05 = 0.25
 - (void)menuDoublePress;
@@ -212,6 +234,9 @@ delayBetweenTaps:(NSTimeInterval)delay;
 
 // sync 0.05
 - (void)mutePress;
+
+- (void)muteDown;
+- (void)muteUp;
 
 /* MARK: --- Volume Buttons --- */
 
@@ -258,4 +283,17 @@ delayBetweenTaps:(NSTimeInterval)delay;
 - (void)otherPage:(uint32_t)page usageDown:(uint32_t)usage;
 - (void)otherPage:(uint32_t)page usageUp:(uint32_t)usage;
 
+/* MARK: --- Recycle --- */
+
+- (void)releaseEveryKeys;
+
+/* MARK: --- Keyboard Interruption --- */
+
+- (void)hardwareLock;
+- (void)hardwareUnlock;
+
 @end
+
+NS_ASSUME_NONNULL_END
+
+#endif /* STHIDEventGenerator_h */
