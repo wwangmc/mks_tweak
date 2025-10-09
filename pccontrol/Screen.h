@@ -18,7 +18,7 @@
 + (NSData *)takeScreenshot;
 + (NSData *)takeScreenshot_v2;
 + (CGImageRef)createScreenShotCGImageRef;
-
++ (void) resetDirtyFrameCount;
 @end
 
 #endif

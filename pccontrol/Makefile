@@ -13,8 +13,8 @@ SEARCH_DIRS := hid
 # 自动查找所有目录并添加 -I 前缀
 $(TWEAK_NAME)_CFLAGS += $(shell find $(SEARCH_DIRS) -type d -exec sh -c 'find {} -name "*.h" -print -quit | grep -q .' \; -print | sed 's/^/-I/')
 
-$(TWEAK_NAME)_FRAMEWORKS = UIKit AssetsLibrary CoreMedia
-$(TWEAK_NAME)_PRIVATE_FRAMEWORKS = IOKit IOSurface
+$(TWEAK_NAME)_FRAMEWORKS = UIKit CoreGraphics CoreMedia Foundation IOKit QuartzCore
+$(TWEAK_NAME)_PRIVATE_FRAMEWORKS = IOSurface 
 $(TWEAK_NAME)_EXTRA_FRAMEWORKS = GCDWebServers
 
 include $(THEOS_MAKE_PATH)/tweak.mk

@@ -5,6 +5,7 @@
 // #import "headers/IOKitSPI.h"
 #import <IOSurface/IOSurfaceRef.h>
 
+
 // 像素高度及宽度
 static CGFloat device_screen_width = 0;
 static CGFloat device_screen_height = 0;
@@ -13,6 +14,12 @@ static CGFloat device_screen_height = 0;
 static CGFloat device_screen_pt_width = 0;
 static CGFloat device_screen_pt_height = 0;
 static CGSize portraitSize;
+
+static CFIndex sDirtyFrameCount = 0;
+
+extern "C"{
+CFIndex CARenderServerGetDirtyFrameCount(void *);
+}
 
 static CGFloat device_screen_scale = 0;
 OBJC_EXTERN void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef surface, int x, int y);
@@ -113,9 +120,17 @@ Get the size of the screen and set them.
 {
     return [UIScreen mainScreen].bounds;
 }
-
++ (void) resetDirtyFrameCount{
+    sDirtyFrameCount = 0;
+}
 + (NSData *)takeScreenshotWithQuality_v2:(CGFloat)quality {
-    NSLog(@"take a screenshot");
+    CFIndex dirtyFrameCount = CARenderServerGetDirtyFrameCount(NULL);    
+    // NSLog(@"take a screenshot,%d",dirtyFrameCount);
+    if (dirtyFrameCount == sDirtyFrameCount) {
+        return nil; // No change
+    }
+    sDirtyFrameCount = dirtyFrameCount;
+
     CGImageRef imageRef = [Screen createScreenShotCGImageRef];
     UIImage *image = [UIImage imageWithCGImage:imageRef];
     CGImageRelease(imageRef);

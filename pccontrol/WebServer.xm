@@ -378,14 +378,32 @@ void initSettingHandle(GCDWebsocketServer *webServer)
 }
 void initScreenHandle(GCDWebsocketServer *webServer)
 {
+    [webServer addHandlerForMethod:@"GET" path:@"/resetDirtyFrameCount" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        [Screen resetDirtyFrameCount];
+        return staticSuccessResponse();
+    }];
     [webServer addHandlerForMethod:@"GET" path:@"/screenshot" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         NSString *quality = request.query[@"quality"];
         if(!quality){
             return missingParamResponse();
         }
         float floatValue = [quality floatValue];
-
         NSData *imageData = [Screen takeScreenshotWithQuality_v2:floatValue];
+        if (imageData == nil || imageData.length == 0) {
+            NSLog(@"[Screenshot] Screen content unchanged, skipping image generation");
+            
+            // 返回 204 No Content 状态，表示成功但没有新内容
+            NSDictionary *responseInfo = @{
+                @"status": @"unchanged",
+                @"message": @"Screen content has not changed since last capture"
+            };
+            
+            GCDWebServerDataResponse *response = [GCDWebServerDataResponse responseWithJSONObject:responseInfo];
+            [response setStatusCode:204]; 
+            [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];
+            [response setValue:@"application/json" forAdditionalHeader:@"Content-Type"];
+            return response;
+        }
         GCDWebServerDataResponse * response = [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
         [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
         [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
@@ -827,17 +845,6 @@ void initHandle(GCDWebsocketServer *webServer)
                           };
 
                           return dataResponse(response);
-                      }];
-
-    // 输入当前苹果账号的密码
-    [webServer addHandlerForMethod:@"GET"
-                              path:@"/inputPwd"
-                      requestClass:[GCDWebServerRequest class]
-                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-
-                          currPwd();
-
-                          return staticSuccessResponse();
                       }];
 
 
