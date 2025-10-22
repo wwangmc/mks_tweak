@@ -7,5 +7,6 @@
 
 void startWebServer();
 void initHandle(GCDWebsocketServer *webServer);
+BOOL processReceivedJSONData(NSDictionary* jsonData);
 #endif
 

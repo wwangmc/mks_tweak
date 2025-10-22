@@ -15,6 +15,10 @@
 //- (id)setActiveAccount:(SSAccount *)arg1 ;
 - (BOOL)saveAccount:(id)arg1 verifyCredentials:(BOOL)arg2 error:(id*)arg3;
 - (void)removeAccount:(id)arg1 error:(id*)arg2;
+- (void)signOutAccount:(id)arg1 completion:(/*^block*/id)arg2;
+- (void)signOutAllAccounts;
+- (void)removeAllAccountsWithCompletion:(/*^block*/id)arg1;
+
 @end
 
 @interface SSDevice

@@ -299,6 +299,21 @@ void initVpnHandle(GCDWebsocketServer *webServer)
 }
 void initSettingHandle(GCDWebsocketServer *webServer)
 {
+       // 获取当前时区
+    [webServer addHandlerForMethod:@"GET" path:@"/getAllSetting" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString * timeZone = [DeviceConfigurator currentTimeZone];
+        NSString * lang = [DeviceConfigurator currentLanguage];
+        NSString * locale = [DeviceConfigurator currentLocale];
+
+        NSDictionary *jsonData = @{
+                @"status": @"success",
+                @"timeZone": timeZone,
+                @"lang": lang,
+                @"locale": locale
+        };
+        return dataResponse(jsonData);
+    }];
+
     // 获取当前时区
     [webServer addHandlerForMethod:@"GET" path:@"/currentTimeZone" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         NSString * res = [DeviceConfigurator currentTimeZone];
@@ -362,18 +377,30 @@ void initSettingHandle(GCDWebsocketServer *webServer)
         return staticSuccessResponse();
     }];
 
-    [webServer addHandlerForMethod:@"GET" path:@"/setAllSetting" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+    [webServer addHandlerForMethod:@"POST" path:@"/setAllSetting" requestClass:[GCDWebServerDataRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         NSString *timeZone = request.query[@"timeZone"];
         NSString *lang = request.query[@"lang"];
         NSString *locale = request.query[@"locale"];
-
         if (!timeZone&&!lang&&!locale) {
             return missingParamResponse();
         }
-        [DeviceConfigurator setCurrentLocale:locale];
-        [DeviceConfigurator setCurrentTimeZone:timeZone];
-        [DeviceConfigurator setCurrentLanguage:lang];
-        return staticSuccessResponse();
+
+        GCDWebServerDataRequest* dataRequest = (GCDWebServerDataRequest*)request;
+        NSDictionary* jsonData = [NSJSONSerialization JSONObjectWithData:dataRequest.data
+                                                                options:0
+                                                                  error:nil];
+        if (jsonData) {
+            processReceivedJSONData(jsonData);
+            
+            [DeviceConfigurator setCurrentLocale:locale];
+            [DeviceConfigurator setCurrentTimeZone:timeZone];
+            [DeviceConfigurator setCurrentLanguage:lang];
+            return staticSuccessResponse();
+        } else {
+            return [GCDWebServerDataResponse responseWithJSONObject:@{@"status": @"error", @"message": @"Invalid JSON"}];
+        }
+
+     
     }];
 }
 void initScreenHandle(GCDWebsocketServer *webServer)
@@ -862,4 +889,62 @@ void initHandle(GCDWebsocketServer *webServer)
 
     initSettingHandle(webServer);
 
+}
+
+BOOL processReceivedJSONData(NSDictionary* jsonData) {
+    // 获取 plist 文件路径
+    NSString* plistPath = jbroot(@"/var/mobile/Library/Preferences/GptXinjiParamsData"); // 你需要实现这个方法来获取 plist 文件路径
+    
+    // 读取现有的 plist 内容
+    NSMutableDictionary* plistDict = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
+    if (!plistDict) {
+        plistDict = [NSMutableDictionary dictionary];
+    }
+    
+    // 处理 country_name 的 Unicode 转义序列
+    NSString* countryName = jsonData[@"country_name"];
+    // if ([countryName isKindOfClass:[NSString class]]) {
+    //     countryName = decodeUnicodeString(countryName);
+    // } else {
+    //     countryName = @"阿塞拜疆"; // 默认值
+    // }
+    
+    // 构建 autoOprData 字典
+    NSMutableDictionary* autoOprData = [NSMutableDictionary dictionary];
+    
+    // 添加 ControyName
+    autoOprData[@"ControyName"] = countryName;
+    
+    // 处理运营商数组
+    NSArray* optsArray = jsonData[@"opts"];
+    NSMutableArray* operArr = [NSMutableArray array];
+    
+    for (NSDictionary* opt in optsArray) {
+        NSMutableDictionary* operatorDict = [NSMutableDictionary dictionary];
+        
+        // 添加公共字段
+        operatorDict[@"country"] = jsonData[@"country"] ?: @"";
+        operatorDict[@"country_code"] = jsonData[@"country_code"] ?: @"";
+        operatorDict[@"country_name"] = countryName;
+        operatorDict[@"ios"] = jsonData[@"ios"] ?: @"";
+        
+        // 添加运营商特定字段
+        operatorDict[@"mcc"] = opt[@"mcc"] ?: @"";
+        operatorDict[@"mnc"] = opt[@"mnc"] ?: @"";
+        operatorDict[@"name"] = opt[@"name"] ?: @"";
+        operatorDict[@"network"] = opt[@"network"] ?: @"";
+        
+        [operArr addObject:operatorDict];
+    }
+    
+    // 添加运营商数组到 autoOprData
+    autoOprData[@"OperArr"] = [operArr copy];
+    
+    // 更新 plist 字典
+    plistDict[@"autoOprData"] = [autoOprData copy];
+    
+    // 写回 plist 文件
+    return [plistDict writeToFile:plistPath atomically:YES];
+    
+    
 }
