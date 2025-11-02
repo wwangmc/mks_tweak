@@ -1,5 +1,3 @@
-#import <MobileCoreServices/LSApplicationProxy.h>
-#import <MobileCoreServices/LSApplicationWorkspace.h>
 #import "Application.h"
 #import "AlertBox.h"
 
@@ -20,7 +18,9 @@ NSDictionary * formatAppProxy(LSApplicationProxy *appProxy)
                 @"isInstalled": @(appProxy.isInstalled),
                 @"bundleURL": appProxy.bundleURL.path ?: @"",
                 @"dataContainerURL": [appProxy valueForKeyPath:@"dataContainerURL.path"] ?: @"",
-                @"itemID": [appProxy valueForKey:@"itemID"] ?: @""
+                @"itemID": [appProxy valueForKey:@"itemID"] ?: @"",
+                @"idfa": [appProxy.deviceIdentifierForAdvertising UUIDString] ?:@"",
+                @"idfv": [appProxy.deviceIdentifierForVendor UUIDString] ?:@""
             };
             return appInfo;
     }
@@ -62,4 +62,16 @@ BOOL uninstall(NSString *bundleId)
     }
     showAlertBox(@"卸载结果",@"该应用不可卸载",2);
     return false;
+}
+
+void resetIDFA()
+{
+    [[LSApplicationWorkspace defaultWorkspace] clearAdvertisingIdentifier];
+}
+
+void resetIDFV(NSString * bundleId)
+{
+    NSDictionary * appInfo = getApplication(bundleId);
+    NSString *vendorName = [appInfo objectForKey:@"vendorName"];
+    [[LSApplicationWorkspace defaultWorkspace] removeDeviceIdentifierForVendorName:vendorName bundleIdentifier:bundleId];
 }
