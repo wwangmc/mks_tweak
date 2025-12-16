@@ -11,7 +11,7 @@ ROOTHIDE = 2
 # 默认使用 rootfull (0)，可通过命令行覆盖，如 `make TYPE=1` 选择 rootless
 TYPE ?= $(ROOTLESS)
 
-TARGET = iphone:clang:16.5:15.0
+TARGET = iphone:clang:16.5:14.0
 ifeq ($(TYPE), $(ROOTLESS))
     THEOS_PACKAGE_SCHEME = rootless
 else ifeq ($(TYPE), $(ROOTHIDE))

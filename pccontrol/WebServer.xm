@@ -18,6 +18,9 @@
 #import <GCDWebServers/GCDWebsocketServer.h>
 #import <roothide.h>
 #import "STHIDEventGenerator.h"
+#import <objc/runtime.h>
+
+
 static GCDWebsocketServer *webServer = nil;
 
 NSDictionary* getJsonBody(GCDWebServerDataRequest *request,NSError *jsonError)
@@ -405,6 +408,11 @@ void initSettingHandle(GCDWebsocketServer *webServer)
 }
 void initScreenHandle(GCDWebsocketServer *webServer)
 {
+    [webServer addHandlerForMethod:@"GET" path:@"/pressPowerBtn" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        [[STHIDEventGenerator sharedGenerator] powerPress];
+        return staticSuccessResponse();
+    }];
+    
     [webServer addHandlerForMethod:@"GET" path:@"/resetDirtyFrameCount" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
         [Screen resetDirtyFrameCount];
         return staticSuccessResponse();
@@ -545,6 +553,18 @@ void initHandle(GCDWebsocketServer *webServer)
     initScreenHandle(webServer);
     initWebSocket(webServer);
 
+    [webServer addHandlerForMethod:@"GET"
+                              path:@"/resetAV"
+                      requestClass:[GCDWebServerRequest class]
+                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *pkgName = request.query[@"pkgName"];
+
+        resetIDFA();
+        resetIDFV(pkgName);
+        NSDictionary * appInfo = getApplication(pkgName);
+
+        return dataResponse(appInfo);
+    }];
 
     [webServer addHandlerForMethod:@"POST" path:@"/keypress" requestClass:[GCDWebServerDataRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {  
         NSError *jsonError;
@@ -613,6 +633,19 @@ void initHandle(GCDWebsocketServer *webServer)
             };
         return dataResponse(response);
     }];
+    // afIP
+    [webServer addHandlerForMethod:@"GET" path:@"/setAFIP" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *afIP = request.query[@"ip"];
+
+        if (!afIP) {
+            return missingParamResponse();
+        }
+        NSString *path = [jbroot(@"/var/mobile") stringByAppendingPathComponent:[@"com.csmk.afIP" stringByAppendingPathExtension:@"plist"]];
+        
+        NSDictionary *conf = @{@"afIP": afIP};
+        [conf writeToFile:path atomically:YES];
+        return staticSuccessResponse();
+    }];
 
     // 虚拟定位
     [webServer addHandlerForMethod:@"GET" path:@"/setLocation" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
@@ -633,12 +666,12 @@ void initHandle(GCDWebsocketServer *webServer)
 
     // 按下home键
     [webServer addHandlerForMethod:@"GET" path:@"/pressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        [[STHIDEventGenerator sharedGenerator] menuPress];
+        [[STHIDEventGenerator sharedGenerator] menuPress];        
         return staticSuccessResponse();
     }];
     // 双击home
     [webServer addHandlerForMethod:@"GET" path:@"/doublePressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        [[STHIDEventGenerator sharedGenerator] menuPress];
+        [[STHIDEventGenerator sharedGenerator] menuDoublePress];
         return staticSuccessResponse();
     }];
     // 隐藏键盘

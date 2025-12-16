@@ -6,6 +6,9 @@ GET http://{ip}:8081/screenshot?quality=0.3
 [获取截屏] 
 GET http://{ip}:8081/screenshot_original
 
+[锁屏（按下电源键）] 
+GET http://{ip}:8081/pressPowerBtn
+
 [虚拟定位]
 GET http://{ip}:8081/setLocation?Latitude=28.9050&Longitude=118.5270
 
