@@ -19,7 +19,9 @@
 #import <roothide.h>
 #import "STHIDEventGenerator.h"
 #import <objc/runtime.h>
-
+#import "ADTCC.h"
+#import <MobileCoreServices/LSApplicationProxy.h>
+#import "appinst.h"
 
 static GCDWebsocketServer *webServer = nil;
 
@@ -564,6 +566,30 @@ void initHandle(GCDWebsocketServer *webServer)
         NSDictionary * appInfo = getApplication(pkgName);
 
         return dataResponse(appInfo);
+    }];
+
+    [webServer addHandlerForMethod:@"GET"
+                              path:@"/resetAuth"
+                      requestClass:[GCDWebServerRequest class]
+                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *pkgName = request.query[@"pkgName"];
+		LSApplicationProxy* appProxy = [LSApplicationProxy applicationProxyForIdentifier:pkgName];
+    	CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, (CFURLRef)appProxy.bundleURL);
+		TCCAccessResetForBundle(kTCCServiceUserTracking,bundle);
+
+        return staticSuccessResponse();
+    }];
+
+    [webServer addHandlerForMethod:@"GET"
+                              path:@"/setADAuth"
+                      requestClass:[GCDWebServerRequest class]
+                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *pkgName = request.query[@"pkgName"];
+		LSApplicationProxy* appProxy = [LSApplicationProxy applicationProxyForIdentifier:pkgName];
+    	CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, (CFURLRef)appProxy.bundleURL);
+		TCCAccessSetForBundle(kTCCServiceUserTracking,bundle,YES);
+
+        return staticSuccessResponse();
     }];
 
     [webServer addHandlerForMethod:@"POST" path:@"/keypress" requestClass:[GCDWebServerDataRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {  

@@ -17,7 +17,7 @@ ifeq ($(TYPE), $(ROOTLESS))
 else ifeq ($(TYPE), $(ROOTHIDE))
     THEOS_PACKAGE_SCHEME = roothide
 else 
-	TARGET = iphone:clang:16.5:12.0
+	TARGET = iphone:clang:16.5:13.0
 endif
 
 INSTALL_TARGET_PROCESSES = SpringBoard
@@ -30,4 +30,5 @@ SUBPROJECTS += StoreSwitcher2
 SUBPROJECTS += locationfaker
 SUBPROJECTS += keychain_clear
 SUBPROJECTS += roothelp
+SUBPROJECTS += appinst
 include $(THEOS_MAKE_PATH)/aggregate.mk

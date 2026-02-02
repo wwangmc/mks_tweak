@@ -3,6 +3,7 @@
 #import <MobileCoreServices/LSApplicationWorkspace.h>
 #import <MobileCoreServices/LSApplicationProxy.h>
 
+
 NSMutableArray * getAllApplication();
 NSDictionary * getApplication(NSString *bundleId);
 BOOL uninstall(NSString *bundleId);
@@ -12,6 +13,7 @@ void resetIDFV(NSString * bundleId);
 @interface LSApplicationProxy(Private)
     @property(readonly, nonatomic) NSUUID *deviceIdentifierForAdvertising;
     @property(readonly, nonatomic) NSUUID *deviceIdentifierForVendor;
+    -(BOOL)isDeletable;
 @end
 
 @interface LSApplicationWorkspace(Private)

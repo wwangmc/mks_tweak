@@ -1,5 +1,6 @@
 #import "Application.h"
 #import "AlertBox.h"
+#import <dlfcn.h>
 
 NSDictionary * formatAppProxy(LSApplicationProxy *appProxy)
 {
@@ -75,3 +76,4 @@ void resetIDFV(NSString * bundleId)
     NSString *vendorName = [appInfo objectForKey:@"vendorName"];
     [[LSApplicationWorkspace defaultWorkspace] removeDeviceIdentifierForVendorName:vendorName bundleIdentifier:bundleId];
 }
+
