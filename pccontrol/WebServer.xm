@@ -754,6 +754,29 @@ void initHandle(GCDWebsocketServer *webServer)
                           });
                       }];
 
+        [webServer addHandlerForMethod:@"POST"
+                              path:@"/readPlist"
+                      requestClass:[GCDWebServerDataRequest class] // 必须是 DataRequest 才能读取 Body
+                      processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
+                NSError *jsonError;
+                NSDictionary *jsonBody = getJsonBody(request,jsonError);
+                if (jsonError) {
+                    return jsonFormatErrorResponse();
+                }
+
+
+                NSString *path = jsonBody[@"path"];
+
+                if (!path) {
+                    return missingParamResponse();
+                }
+                NSDictionary * data = readPlistAtPath(path);
+                return dataResponse(@{
+                    @"status": @"success",
+                    @"data": data
+                });
+
+        }];
     // 删除文本
     [webServer addHandlerForMethod:@"GET"
                               path:@"/del"

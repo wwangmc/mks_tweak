@@ -43,7 +43,6 @@ NSString *runCommand(NSString *command) {
 
     // 将输出数据转换为字符串
     NSString *rawOutput = [[NSString alloc] initWithData:outputData encoding:NSUTF8StringEncoding];
-
     // 使用正则表达式过滤掉包含 "SubstituteLog" 前缀的日志行
     NSError *error = nil;
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"^.*SubstituteLog.*$" options:NSRegularExpressionAnchorsMatchLines error:&error];
@@ -61,4 +60,19 @@ NSString *runCommand(NSString *command) {
     NSString *finalOutput = [lines componentsJoinedByString:@"\n"];
     
     return finalOutput;
+}
+
+NSDictionary *readPlistAtPath(NSString * path)
+{
+    if (![[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        return nil;
+    }
+
+    NSDictionary *dict = [NSDictionary dictionaryWithContentsOfFile:path];
+
+    if (![dict isKindOfClass:[NSDictionary class]]) {
+        return nil;
+    }
+
+    return dict;
 }
