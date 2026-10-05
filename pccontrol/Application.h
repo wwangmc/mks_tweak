@@ -22,5 +22,6 @@ void resetIDFV(NSString * bundleId);
     - (void)clearAdvertisingIdentifier;
     - (id)deviceIdentifierForAdvertising;
     - (void)removeDeviceIdentifierForVendorName:(id)arg1 bundleIdentifier:(id)arg2;
+    - (bool)uninstallApplication:(id)arg1 withOptions:(id)arg2;
 @end
 #endif

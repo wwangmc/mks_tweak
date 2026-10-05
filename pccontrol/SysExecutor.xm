@@ -71,3 +71,9 @@ NSString *runCommand(NSString *command) {
     }
     return [lines componentsJoinedByString:@"\n"];
 }
+
+NSDictionary *readPlistAtPath(NSString *path) {
+    if (![path isKindOfClass:[NSString class]] || !path.length) return nil;
+    NSDictionary *plist = [NSDictionary dictionaryWithContentsOfFile:path];
+    return [plist isKindOfClass:[NSDictionary class]] ? plist : nil;
+}

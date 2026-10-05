@@ -4,7 +4,7 @@
 `WebServerSupport.m` 集中处理 JSON 对象解析、参数校验、CORS 和响应。
 `ScreenshotStream.m` 按读取需求异步生成 MJPEG 帧，并在连接关闭后停止截图。
 
-现有 51 个接口地址和请求方法保留。以下行为进行了修正：
+原有 51 个接口地址和请求方法保留，并合入远端新增的 `POST /readPlist`。以下行为进行了修正：
 
 - JSON 对象接口拒绝无效 JSON、数组根节点和字段类型错误，返回 HTTP 400。
 - `POST /killAll` 的空请求体或 `[]` 仍表示关闭全部应用；无效的排除列表返回 400，不执行关闭操作。
@@ -14,6 +14,7 @@
 - `POST /setAllSetting` 支持从 JSON 对象读取 `timeZone`、`lang`、`locale`，并兼容原有查询参数；两者同时出现时查询参数优先。仅提供部分设置时只修改对应项，保存运营商配置失败时返回 500。
 - `/setClip` 支持直接写入空剪贴板；`/alert` 的 `time` 支持小数秒。
 - `/keychain` 仅在 `remove` 操作中要求 `key`，并按单个 shell 参数转义；未知操作返回 400。
+- `/readPlist` 接收 JSON 对象中的 `path`，返回 `{"status":"success","data":{...}}`；参数错误、文件无法读取、根节点不是字典或内容无法表示为 JSON 时返回 400。
 - 输入事件通过独立串行队列执行，响应成功表示事件已入队。界面绘制和剪贴板访问在主线程进行。
 - 重复调用 `startWebServer()` 不会断开已运行服务的客户端。
 

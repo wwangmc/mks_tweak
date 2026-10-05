@@ -1,6 +1,6 @@
 Package: com.csmk.mks
 Name: mks
-Version: 3.2.7
+Version: 3.2.8
 Depends: mobilesubstrate
 Architecture: iphoneos-arm
 Description: An awesome tool of some sort!!

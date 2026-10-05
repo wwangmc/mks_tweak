@@ -409,6 +409,16 @@ static void initInputHandle(GCDWebsocketServer *server) {
         if (!output) return MKSServerError(@"Failed to execute command");
         return dataResponse(@{@"status": @"success", @"data": output});
     });
+    MKSAddJSONHandler(server, @"/readPlist", ^GCDWebServerResponse *(NSDictionary *body) {
+        NSString *path = MKSString(body[@"path"]);
+        if (!path.length) return missingParamResponse();
+        NSDictionary *plist = readPlistAtPath(path);
+        if (!plist) return MKSClientError(@"Unable to read a dictionary plist at the supplied path");
+        if (![NSJSONSerialization isValidJSONObject:plist]) {
+            return MKSClientError(@"Plist contains values that cannot be represented as JSON");
+        }
+        return dataResponse(@{@"status": @"success", @"data": plist});
+    });
     addGETHandler(server, @"/del", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
         NSString *num = MKSString(request.query[@"num"]);
         if (!MKSReadInteger(num, 0, INT_MAX, NULL)) return missingParamResponse();

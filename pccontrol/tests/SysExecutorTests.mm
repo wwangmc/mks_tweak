@@ -12,8 +12,30 @@ static NSUInteger openDescriptors(void) {
     return count;
 }
 
+static void testReadPlist(void) {
+    CHECK(readPlistAtPath(nil) == nil);
+    CHECK(readPlistAtPath(@"") == nil);
+    CHECK(readPlistAtPath((id)NSNull.null) == nil);
+    NSString *directory = [NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
+    CHECK([[NSFileManager defaultManager] createDirectoryAtPath:directory withIntermediateDirectories:YES attributes:nil error:nil]);
+    NSString *path = [directory stringByAppendingPathComponent:@"test.plist"];
+    CHECK(readPlistAtPath(path) == nil);
+    NSDictionary *expected = @{@"text": @"中文", @"number": @3, @"nested": @{@"enabled": @YES}};
+    CHECK([expected writeToFile:path atomically:YES]);
+    CHECK([readPlistAtPath(path) isEqualToDictionary:expected]);
+    NSData *binary = [NSPropertyListSerialization dataWithPropertyList:expected format:NSPropertyListBinaryFormat_v1_0 options:0 error:nil];
+    CHECK([binary writeToFile:path atomically:YES]);
+    CHECK([readPlistAtPath(path) isEqualToDictionary:expected]);
+    CHECK([@[@"not-a-dictionary"] writeToFile:path atomically:YES]);
+    CHECK(readPlistAtPath(path) == nil);
+    CHECK([[@"invalid plist" dataUsingEncoding:NSUTF8StringEncoding] writeToFile:path atomically:YES]);
+    CHECK(readPlistAtPath(path) == nil);
+    CHECK([[NSFileManager defaultManager] removeItemAtPath:directory error:nil]);
+}
+
 int main(void) {
     @autoreleasepool {
+        testReadPlist();
         CHECK(runCommand(nil) == nil);
         CHECK(runCommand(@"") == nil);
         CHECK([runCommand(@"printf hello") isEqualToString:@"hello"]);
@@ -43,7 +65,7 @@ int main(void) {
         setenv("MKS_TEST_ROOTHELP", "/nonexistent/mks-roothelp-test", 1);
         for (int i = 0; i < 3; i++) CHECK(runCommand(@"printf hello") == nil);
         CHECK(openDescriptors() == before);
-        printf("Passed %lu command runner checks (stdout, stderr, large and invalid UTF-8 output, concurrency, spawn failures, descriptor cleanup).\n", (unsigned long)checks);
+        printf("Passed %lu plist and command runner checks (XML/binary plist, invalid paths and roots, output, concurrency, spawn failures, descriptor cleanup).\n", (unsigned long)checks);
     }
     return 0;
 }

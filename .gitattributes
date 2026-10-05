@@ -1,0 +1,2 @@
+# Logos sources use .xm too; override global audio-module binary attributes.
+*.xm text diff merge
