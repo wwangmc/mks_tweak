@@ -163,7 +163,10 @@ void showToastFromJson(NSDictionary *jsonDict, NSError **error) {
         // 7. 调整安全区域（关键修改）
         UIEdgeInsets safeArea = UIEdgeInsetsZero;
         if (@available(iOS 11.0, *)) {
-            safeArea = activeScene ? activeScene.keyWindow.safeAreaInsets : [UIApplication sharedApplication].windows.firstObject.safeAreaInsets;
+            UIWindow *referenceWindow = nil;
+            if (@available(iOS 15.0, *)) referenceWindow = activeScene.keyWindow;
+            if (!referenceWindow) referenceWindow = [UIApplication sharedApplication].windows.firstObject;
+            safeArea = referenceWindow.safeAreaInsets;
             windowY = (position == 1) ? (windowY - safeArea.bottom) : (windowY + safeArea.top);
         }
         
@@ -184,8 +187,10 @@ void showToastFromJson(NSDictionary *jsonDict, NSError **error) {
         [_window addSubview:label];
         
         // 10. 自动隐藏
+        UIWindow *toastWindow = _window;
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(duration * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            if (_window) {
+            // A previous toast's timeout must not hide a newer toast.
+            if (_window == toastWindow) {
                 _window.hidden = YES;
                 _window = nil;
             }

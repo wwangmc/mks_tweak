@@ -15,6 +15,7 @@
 + (CGRect)getBounds;
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality;
 + (NSData *)takeScreenshotWithQuality_v2:(CGFloat)quality;
++ (NSData *)takeScreenshotWithQuality_v2:(CGFloat)quality error:(NSError **)error;
 + (NSData *)takeScreenshot;
 + (NSData *)takeScreenshot_v2;
 + (CGImageRef)createScreenShotCGImageRef;

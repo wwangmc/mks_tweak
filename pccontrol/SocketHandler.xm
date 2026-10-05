@@ -1,111 +1,70 @@
 #import "SocketHandler.h"
+#import "WebServerSupport.h"
 #import <Foundation/NSDistributedNotificationCenter.h>
-#import "Process.h"
-#import "Request.h"
-#import "Screen.h"
 #import "STHIDEventGenerator.h"
-
-static NSTimer *_globalTimer;
-@interface SocketHandler ()
-@end
+#include <limits.h>
 
 @implementation SocketHandler
 
--(void)onData:(NSData *)data{
+- (void)onData:(NSData *)data {
     [self sendData:data opcode:OPCODE_BINARY];
 }
 
--(void)onText:(NSString *)text{
+- (void)onText:(NSString *)text {
     [self handleTask:text];
 }
 
--(void)onClosed{
-    // [self stopTimer];
-
-}
--(void)onError:(NSError*)error{
-    // 输出异常信息后 和close走一样逻辑
+- (void)onError:(NSError *)error {
     NSLog(@"Socket error: %@", error);
-    // [self stopTimer];
-}
--(void)onConnected{
-    // [self startTimer];
 }
 
-- (void)startTimer {
-    [self stopTimer];
-    
-    dispatch_async(dispatch_get_main_queue(), ^{
-        _globalTimer = [NSTimer scheduledTimerWithTimeInterval:0.1
-                                                              target:self
-                                                            selector:@selector(handleTimer)
-                                                            userInfo:nil
-                                                             repeats:YES];
-    });
-}
-
-- (void)stopTimer {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (_globalTimer) {
-            [_globalTimer invalidate];
-            _globalTimer = nil;
-        }
-    });
-}
-
-- (void)handleTimer {
-    [self sendData:[Screen takeScreenshotWithQuality:0.3] opcode:OPCODE_BINARY];
-}
-- (NSDictionary *)formatJSON:(NSString *)text error:(NSError **)error {
-    // NSString *nestedJsonString = @"{\"user\":{\"name\":\"Alice\",\"preferences\":[\"reading\",\"hiking\"]}}";
-    NSData *nestedJsonData = [text dataUsingEncoding:NSUTF8StringEncoding];
-
-    id nestedJsonObject = [NSJSONSerialization JSONObjectWithData:nestedJsonData 
-                                                        options:kNilOptions 
-                                                        error:error];
-
-    if ([nestedJsonObject isKindOfClass:[NSDictionary class]]) {
-        return nestedJsonObject;
-    }
-    return nil;
-
-}
 - (void)handleTask:(NSString *)text {
     NSError *error = nil;
-
-    NSDictionary* data_dict = [self formatJSON:text error:&error];
-    if(error){
+    NSDictionary *body = MKSJSONDictionary([text dataUsingEncoding:NSUTF8StringEncoding], &error);
+    if (!body) {
         [self sendText:@"反序列化失败"];
-    }                                                       
-    if([data_dict[@"type"] isEqualToString:@"touch"]){
-        NSDictionary *jsonBody = data_dict[@"data"];
-
-        NSNumber *xValue = jsonBody[@"x"];
-        NSNumber *yValue = jsonBody[@"y"];
-        CGPoint point = CGPointMake(xValue.floatValue, yValue.floatValue);
-        NSNumber *indexValue = jsonBody[@"index"];
-        NSString *typeValue = jsonBody[@"type"];
-        // jsonToEventDataAndPerform(jsonBody, &error);
-        if ([typeValue isEqualToString:@"down"] || [typeValue isEqualToString:@"move"]) {
-            [[STHIDEventGenerator sharedGenerator] touchDown:point];
-        }  else if ([typeValue isEqualToString:@"up"]) {
-            [[STHIDEventGenerator sharedGenerator] liftUp:point];
-        }else if ([typeValue isEqualToString:@"tap"]) {
-            [[STHIDEventGenerator sharedGenerator] tap:point];
-        }  else {
+        return;
+    }
+    NSString *type = MKSString(body[@"type"]);
+    if ([type isEqualToString:@"touch"]) {
+        NSDictionary *touch = body[@"data"];
+        if (!MKSIsValidTouch(touch)) {
             [self sendText:@"调用失败"];
-        } 
-    }else if([data_dict[@"type"] isEqualToString:@"home"]){
-        [[STHIDEventGenerator sharedGenerator] menuDoublePress];
-    }else if([data_dict[@"type"] isEqualToString:@"inputText"]){
-        NSString *text = data_dict[@"data"];
-        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(1), @"task_content": text} deliverImmediately: true];
-    }else if([data_dict[@"type"] isEqualToString:@"moveCursor"]){
-        NSString *num = data_dict[@"data"];
-        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(3), @"task_content": num} deliverImmediately: true];
-    }else if([data_dict[@"type"] isEqualToString:@"backspace"]){
-        NSString *num = data_dict[@"data"];
-        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(4), @"task_content": num} deliverImmediately: true];
+            return;
+        }
+        CGPoint point = CGPointMake([touch[@"x"] doubleValue], [touch[@"y"] doubleValue]);
+        NSString *action = touch[@"type"];
+        dispatch_async(MKSInputQueue(), ^{
+            STHIDEventGenerator *generator = [STHIDEventGenerator sharedGenerator];
+            if ([action isEqualToString:@"up"]) [generator liftUp:point];
+            else if ([action isEqualToString:@"tap"]) [generator tap:point];
+            else [generator touchDown:point];
+        });
+    } else if ([type isEqualToString:@"home"]) {
+        dispatch_async(MKSInputQueue(), ^{
+            [[STHIDEventGenerator sharedGenerator] menuDoublePress];
+        });
+    } else if ([type isEqualToString:@"inputText"]) {
+        NSString *value = MKSString(body[@"data"]);
+        if (!value) {
+            [self sendText:@"调用失败"];
+            return;
+        }
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:nil
+            userInfo:@{@"task_id": @(1), @"task_content": value} deliverImmediately:YES];
+    } else if ([type isEqualToString:@"moveCursor"] || [type isEqualToString:@"backspace"]) {
+        BOOL backspace = [type isEqualToString:@"backspace"];
+        int count;
+        if (!MKSReadInteger(body[@"data"], backspace ? 0 : INT_MIN, INT_MAX, &count)) {
+            [self sendText:@"调用失败"];
+            return;
+        }
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:nil
+            userInfo:@{@"task_id": @(backspace ? 4 : 3), @"task_content": [NSString stringWithFormat:@"%d", count]}
+            deliverImmediately:YES];
+    } else {
+        [self sendText:@"调用失败"];
     }
 }
+
 @end

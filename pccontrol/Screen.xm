@@ -16,6 +16,8 @@ static CGFloat device_screen_pt_height = 0;
 static CGSize portraitSize;
 
 static CFIndex sDirtyFrameCount = 0;
+static BOOL sHasCapturedFrame = NO;
+static CGFloat sLastCaptureQuality = 0;
 
 extern "C"{
 CFIndex CARenderServerGetDirtyFrameCount(void *);
@@ -78,7 +80,7 @@ Get the size of the screen and set them.
 {
     __block int screenOrientation = -1;
 
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    void (^readOrientation)(void) = ^{
         @try{
             SpringBoard *springboard = (SpringBoard*)[%c(SpringBoard) sharedApplication];
             screenOrientation = [springboard _frontMostAppOrientation];
@@ -87,8 +89,9 @@ Get the size of the screen and set them.
         @catch (NSException *exception) {
             NSLog(@"com.zjx.springboard: Debug: %@", exception.reason);
         }
-    }   
-    );
+    };
+    if ([NSThread isMainThread]) readOrientation();
+    else dispatch_sync(dispatch_get_main_queue(), readOrientation);
 
     return screenOrientation;
 }
@@ -121,54 +124,78 @@ Get the size of the screen and set them.
     return [UIScreen mainScreen].bounds;
 }
 + (void) resetDirtyFrameCount{
-    sDirtyFrameCount = 0;
+    @synchronized (self) {
+        sDirtyFrameCount = 0;
+        sHasCapturedFrame = NO;
+    }
 }
 + (NSData *)takeScreenshotWithQuality_v2:(CGFloat)quality {
-    CFIndex dirtyFrameCount = CARenderServerGetDirtyFrameCount(NULL);    
-    // NSLog(@"take a screenshot,%d",dirtyFrameCount);
-    if (dirtyFrameCount == sDirtyFrameCount) {
-        return nil; // No change
-    }
-    sDirtyFrameCount = dirtyFrameCount;
+    return [self takeScreenshotWithQuality_v2:quality error:NULL];
+}
 
-    CGImageRef imageRef = [Screen createScreenShotCGImageRef];
-    UIImage *image = [UIImage imageWithCGImage:imageRef];
-    CGImageRelease(imageRef);
-    return UIImageJPEGRepresentation(image,quality);
++ (NSData *)takeScreenshotWithQuality_v2:(CGFloat)quality error:(NSError **)error {
+    if (error) *error = nil;
+    @synchronized (self) {
+        CFIndex dirtyFrameCount = CARenderServerGetDirtyFrameCount(NULL);
+        if (sHasCapturedFrame && dirtyFrameCount == sDirtyFrameCount && quality == sLastCaptureQuality) {
+            return nil; // No change
+        }
+        CGImageRef imageRef = [Screen createScreenShotCGImageRef];
+        NSData *data = nil;
+        if (imageRef) {
+            UIImage *image = [UIImage imageWithCGImage:imageRef];
+            CGImageRelease(imageRef);
+            data = UIImageJPEGRepresentation(image, quality);
+        }
+        if (!data.length) {
+            if (error) *error = [NSError errorWithDomain:@"com.csmk.screenshot" code:500
+                userInfo:@{NSLocalizedDescriptionKey: @"Failed to capture screen"}];
+            return nil;
+        }
+        // Failed captures must not suppress retries for the same dirty frame count.
+        sDirtyFrameCount = dirtyFrameCount;
+        sLastCaptureQuality = quality;
+        sHasCapturedFrame = YES;
+        return data;
+    }
+}
+
++ (UIImage *)captureWindowImage {
+    __block UIImage *image = nil;
+    void (^capture)(void) = ^{
+        if (portraitSize.width <= 0 || portraitSize.height <= 0 || device_screen_scale <= 0) return;
+        UIGraphicsBeginImageContextWithOptions(portraitSize, NO, device_screen_scale);
+        @try {
+            for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
+                [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
+            }
+            image = UIGraphicsGetImageFromCurrentImageContext();
+        } @finally {
+            UIGraphicsEndImageContext();
+        }
+    };
+    if ([NSThread isMainThread]) capture();
+    else dispatch_sync(dispatch_get_main_queue(), capture);
+    return image;
 }
 
 + (NSData *)takeScreenshotWithQuality:(CGFloat)quality {
-    NSLog(@"take a screenshot");
-    UIGraphicsBeginImageContextWithOptions(portraitSize, NO, device_screen_scale);
-    
-    for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-        [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
-    }
-    
-    UIImage *screenshot = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    return UIImageJPEGRepresentation(screenshot, quality);
+    UIImage *image = [self captureWindowImage];
+    return image ? UIImageJPEGRepresentation(image, quality) : nil;
 }
 + (NSData *)takeScreenshot_v2 {
     CGImageRef imageRef = [Screen createScreenShotCGImageRef];
+    if (!imageRef) return nil;
     UIImage *image = [UIImage imageWithCGImage:imageRef];
     CGImageRelease(imageRef);
     return UIImagePNGRepresentation(image);
 }
 + (NSData *)takeScreenshot {
-    UIGraphicsBeginImageContextWithOptions(portraitSize, NO, device_screen_scale);
-    
-    for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-        [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
-    }
-    
-    UIImage *screenshot = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    return UIImagePNGRepresentation(screenshot);
+    UIImage *image = [self captureWindowImage];
+    return image ? UIImagePNGRepresentation(image) : nil;
 }
 + (CGImageRef)createScreenShotCGImageRef {
+    if (device_screen_width <= 0 || device_screen_height <= 0) return NULL;
     // 静态变量（只计算一次）
     static int bytesPerElement = 4;
     static int bytesPerRow;
@@ -209,10 +236,13 @@ Get the size of the screen and set them.
 
     // 创建 IOSurface
     IOSurfaceRef screenSurface = IOSurfaceCreate((__bridge CFDictionaryRef)propertiesTemplate);
-    if (!screenSurface) return nil;
+    if (!screenSurface) return NULL;
 
     // 渲染截图
-    IOSurfaceLock(screenSurface, 0, NULL);
+    if (IOSurfaceLock(screenSurface, 0, NULL) != KERN_SUCCESS) {
+        CFRelease(screenSurface);
+        return NULL;
+    }
     CARenderServerRenderDisplay(0, CFSTR("LCD"), screenSurface, 0, 0);
 
     // 转换为 CGImage
@@ -225,4 +255,3 @@ Get the size of the screen and set them.
     return cgImageRef;
 }
 @end
-

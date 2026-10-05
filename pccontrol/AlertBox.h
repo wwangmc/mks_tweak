@@ -2,6 +2,6 @@
 #define ALERT_BOX_H
 #import <UIKit/UIKit.h>
 
-void showAlertBox(NSString* title, NSString* content, int dismissTime);
+void showAlertBox(NSString* title, NSString* content, NSTimeInterval dismissTime);
 
 #endif

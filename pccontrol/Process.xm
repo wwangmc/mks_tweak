@@ -17,7 +17,9 @@ int bringAppForeground(NSString *appIdentifier)
     if (!openApp)
         openApp = (int(*)(CFStringRef, Boolean))dlsym(sbServices,"SBSLaunchApplicationWithIdentifier");
 
-    return openApp(appBundleName, false);
+    int result = openApp ? openApp(appBundleName, false) : -1;
+    CFRelease(appBundleName);
+    return result;
 }
 
 id getFrontMostApplication()
@@ -28,7 +30,7 @@ id getFrontMostApplication()
 
     __block id app = nil;
 
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    void (^readFrontMostApp)(void) = ^{
         SBApplication *frontMostApp = [(SpringBoard *)UIApplication.sharedApplication _accessibilityFrontMostApplication];
         if (frontMostApp){
             app = frontMostApp.bundleIdentifier;
@@ -36,7 +38,9 @@ id getFrontMostApplication()
             // 获取失败 默认值
             app = @"";
         }
-    });
+    };
+    if ([NSThread isMainThread]) readFrontMostApp();
+    else dispatch_sync(dispatch_get_main_queue(), readFrontMostApp);
     return app;
 
 }

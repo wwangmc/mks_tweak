@@ -5,8 +5,7 @@
 
 #define WEB_PORT 8081
 
-void startWebServer();
+void startWebServer(void);
 void initHandle(GCDWebsocketServer *webServer);
 BOOL processReceivedJSONData(NSDictionary* jsonData);
 #endif
-

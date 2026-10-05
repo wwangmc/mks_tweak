@@ -1,64 +1,73 @@
 #import "SysExecutor.h"
-#include <spawn.h>
-#include <stdlib.h>
-#import <UIKit/UIKit.h>
 #import <roothide.h>
+#include <spawn.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <string.h>
 
 NSString *runCommand(NSString *command) {
-    // 设置管道用于捕获输出
+    if (![command isKindOfClass:[NSString class]] || !command.length) return nil;
     int pipefd[2];
-    pipe(pipefd);
-
-    pid_t pid;
+    if (pipe(pipefd) != 0) {
+        NSLog(@"Failed to create command pipe: %s", strerror(errno));
+        return nil;
+    }
+    // Concurrent commands must not inherit another request's pipe and keep it open.
+    if (fcntl(pipefd[0], F_SETFD, FD_CLOEXEC) == -1 || fcntl(pipefd[1], F_SETFD, FD_CLOEXEC) == -1) {
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return nil;
+    }
     posix_spawn_file_actions_t actions;
-    posix_spawn_file_actions_init(&actions);
+    int status = posix_spawn_file_actions_init(&actions);
+    if (status != 0) {
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return nil;
+    }
+    status = posix_spawn_file_actions_adddup2(&actions, pipefd[1], STDOUT_FILENO);
+    if (!status) status = posix_spawn_file_actions_adddup2(&actions, pipefd[1], STDERR_FILENO);
+    if (!status) status = posix_spawn_file_actions_addclose(&actions, pipefd[0]);
+    if (!status) status = posix_spawn_file_actions_addclose(&actions, pipefd[1]);
 
-    // 将标准输出和错误输出重定向到管道
-    posix_spawn_file_actions_adddup2(&actions, pipefd[1], STDOUT_FILENO);
-    posix_spawn_file_actions_adddup2(&actions, pipefd[1], STDERR_FILENO);
-    posix_spawn_file_actions_addclose(&actions, pipefd[0]);
-
-    // 使用 roothelp 执行命令
+    pid_t pid = 0;
     const char *roothelpPath = jbroot("/usr/local/bin/roothelp");
-    const char *argv[] = {roothelpPath, [command UTF8String], NULL};
-    int status = posix_spawn(&pid, roothelpPath, &actions, NULL, (char *const *)argv, NULL);
-    close(pipefd[1]);
-
-    // 读取命令输出
-    NSMutableData *outputData = [NSMutableData data];
-    char buffer[1024];
-    ssize_t bytesRead;
-    while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
-        [outputData appendBytes:buffer length:bytesRead];
-    }
-    close(pipefd[0]);
-
+    const char *argv[] = {roothelpPath, command.UTF8String, NULL};
+    if (!status) status = posix_spawn(&pid, roothelpPath, &actions, NULL, (char *const *)argv, NULL);
     posix_spawn_file_actions_destroy(&actions);
-
-    // 等待子进程结束
-    if (status == 0) {
-        int exitStatus;
-        waitpid(pid, &exitStatus, 0);
+    close(pipefd[1]);
+    if (status != 0) {
+        close(pipefd[0]);
+        NSLog(@"Failed to launch roothelp: %s", strerror(status));
+        return nil;
     }
 
-    // 将输出数据转换为字符串
-    NSString *rawOutput = [[NSString alloc] initWithData:outputData encoding:NSUTF8StringEncoding];
-
-    // 使用正则表达式过滤掉包含 "SubstituteLog" 前缀的日志行
-    NSError *error = nil;
-    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"^.*SubstituteLog.*$" options:NSRegularExpressionAnchorsMatchLines error:&error];
-    NSString *filteredOutput = rawOutput;
-    if (regex && !error) {
-        filteredOutput = [regex stringByReplacingMatchesInString:rawOutput options:0 range:NSMakeRange(0, rawOutput.length) withTemplate:@""];
+    NSMutableData *output = [NSMutableData data];
+    char buffer[4096];
+    ssize_t bytesRead;
+    while (YES) {
+        bytesRead = read(pipefd[0], buffer, sizeof(buffer));
+        if (bytesRead > 0) [output appendBytes:buffer length:(NSUInteger)bytesRead];
+        else if (bytesRead == -1 && errno == EINTR) continue;
+        else break;
     }
+    BOOL readFailed = bytesRead < 0;
+    close(pipefd[0]);
+    int exitStatus;
+    pid_t waitResult;
+    do {
+        waitResult = waitpid(pid, &exitStatus, 0);
+    } while (waitResult == -1 && errno == EINTR);
+    if (readFailed || waitResult == -1) return nil;
 
-    // 移除所有空行
-    NSArray *lines = [filteredOutput componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
-    NSPredicate *noEmptyLines = [NSPredicate predicateWithFormat:@"SELF != ''"];
-    lines = [lines filteredArrayUsingPredicate:noEmptyLines];
-    
-    // 将非空行重新组合为单一字符串
-    NSString *finalOutput = [lines componentsJoinedByString:@"\n"];
-    
-    return finalOutput;
+    // Preserve command output for non-zero command exits, as the API previously did.
+    NSString *rawOutput = [[NSString alloc] initWithData:output encoding:NSUTF8StringEncoding];
+    if (!rawOutput) rawOutput = [[NSString alloc] initWithData:output encoding:NSISOLatin1StringEncoding];
+    NSMutableArray *lines = [NSMutableArray array];
+    for (NSString *line in [rawOutput componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet]) {
+        if (line.length && [line rangeOfString:@"SubstituteLog"].location == NSNotFound) [lines addObject:line];
+    }
+    return [lines componentsJoinedByString:@"\n"];
 }

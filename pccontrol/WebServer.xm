@@ -1,4 +1,6 @@
 #import "WebServer.h"
+#import "WebServerSupport.h"
+#import "ScreenshotStream.h"
 #import "Screen.h"
 #import <Foundation/NSDistributedNotificationCenter.h>
 #import "SysExecutor.h"
@@ -8,1002 +10,487 @@
 #import "DeviceInfo.h"
 #import "AppStore.h"
 #import "Application.h"
-#import <GCDWebServers/GCDWebServerDataResponse.h>
-#import <GCDWebServers/GCDWebServerErrorResponse.h>
-#import <GCDWebServers/GCDWebServerDataRequest.h>
-#import <GCDWebServers/GCDWebServerStreamedResponse.h>
 #import "Switcher.h"
 #import "SocketHandler.h"
 #import "DeviceConfigurator.h"
-#import <GCDWebServers/GCDWebsocketServer.h>
 #import <roothide.h>
 #import "STHIDEventGenerator.h"
-#import <objc/runtime.h>
 #import "ADTCC.h"
 #import <MobileCoreServices/LSApplicationProxy.h>
-#import "appinst.h"
+#include <limits.h>
+#include <float.h>
 
 static GCDWebsocketServer *webServer = nil;
 
-NSDictionary* getJsonBody(GCDWebServerDataRequest *request,NSError *jsonError)
-{
-    return [NSJSONSerialization JSONObjectWithData:request.data
-                                                        options:kNilOptions
-                                                            error:&jsonError];
-}
-GCDWebServerDataResponse* dataResponse(NSDictionary *jsonData)
-{
-    GCDWebServerDataResponse *response = [GCDWebServerDataResponse responseWithJSONObject:jsonData];
-    [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
-    [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
-    return response;
-}
-GCDWebServerDataResponse* staticSuccessResponse()
-{
-    NSDictionary *jsonData = @{
-        @"status": @"success"
-    };                      
-    return dataResponse(jsonData);
-}
-GCDWebServerErrorResponse* missingParamResponse()
-{
-    GCDWebServerErrorResponse *response = [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
-                                                        message:@"Missing parameter"];
-    [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
-    [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];
-    return response;                                   
-}
-GCDWebServerErrorResponse* jsonFormatErrorResponse()
-{
-    GCDWebServerErrorResponse* response = [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
-                                                            message:@"Invalid JSON"];
-    [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
-    [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];
-    return response;   
+static void addGETHandler(GCDWebsocketServer *server, NSString *path, GCDWebServerProcessBlock handler) {
+    [server addHandlerForMethod:@"GET" path:path requestClass:[GCDWebServerRequest class] processBlock:handler];
 }
 
-void startWebServer()
-{    
-    // sudo killall -9 TSDaemon Hades 干掉触动
-    if (webServer) {
-        [webServer stop];
-        webServer = nil;
-    }
-    webServer = [[GCDWebsocketServer alloc] init];
-    initHandle(webServer);
-    
-    NSError *error = nil;
-    // 使用同步启动方式确保启动完成
-    BOOL success = [webServer startWithOptions:@{
-        GCDWebServerOption_Port: @(WEB_PORT),
-        GCDWebServerOption_BindToLocalhost: @NO,
-        GCDWebServerOption_AutomaticallySuspendInBackground: @NO
-    } error:&error];
-    
-    if (success) {
-        NSLog(@"GCDWebServer running on %@", webServer.serverURL);
-    } else {
-        NSLog(@"Failed to start web server: %@", error);
+static GCDWebServerResponse *imageResponse(NSData *image, NSString *contentType) {
+    if (!image.length) return MKSServerError(@"Failed to capture screen");
+    GCDWebServerDataResponse *response = [GCDWebServerDataResponse responseWithData:image contentType:contentType];
+    [response setValue:@"no-store" forAdditionalHeader:@"Cache-Control"];
+    return MKSApplyCORS(response);
+}
+
+void startWebServer(void) {
+    // Initialize UIKit-dependent screen metrics on the main thread, then serialize HID work off it.
+    MKSOnMainThread(^{ [STHIDEventGenerator sharedGenerator]; });
+    // Repeated initialization must not disconnect active HTTP / WebSocket clients.
+    @synchronized ([GCDWebsocketServer class]) {
+        if (webServer.isRunning) return;
+        GCDWebsocketServer *server = [[GCDWebsocketServer alloc] init];
+        initHandle(server);
+        NSError *error = nil;
+        if ([server startWithOptions:@{
+            GCDWebServerOption_Port: @(WEB_PORT),
+            GCDWebServerOption_BindToLocalhost: @NO,
+            GCDWebServerOption_AutomaticallySuspendInBackground: @NO
+        } error:&error]) {
+            webServer = server;
+            NSLog(@"GCDWebServer running on %@", server.serverURL);
+        } else {
+            webServer = nil;
+            NSLog(@"Failed to start web server: %@", error);
+        }
     }
 }
-void initWebSocket(GCDWebsocketServer *webServer)
-{
-    [webServer addWebsocketHandlerForPath:@"/" withProcessBlock:^GCDWebsocketServerHandler * _Nullable(GCDWebsocketServerConnection * _Nonnull conn) {
+
+static void initWebSocket(GCDWebsocketServer *server) {
+    [server addWebsocketHandlerForPath:@"/" withProcessBlock:^GCDWebsocketServerHandler *(GCDWebsocketServerConnection *conn) {
         return [SocketHandler handlerWithConn:conn];
     }];
-    [webServer addHandlerForMethod:@"GET" path:@"/" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse * _Nullable(__kindof GCDWebServerRequest * _Nonnull request) {
-         NSURL *url = [NSURL URLWithString:@"index.html" relativeToURL:request.URL];
-        
-        return [GCDWebServerResponse responseWithRedirect:url permanent:NO];
-    }];
+    addGETHandler(server, @"/", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSURL *url = [NSURL URLWithString:@"index.html" relativeToURL:request.URL];
+        return MKSApplyCORS([GCDWebServerResponse responseWithRedirect:url permanent:NO]);
+    });
 }
-void initToastHandle(GCDWebsocketServer *webServer)
-{
-    //悬浮窗
-    [webServer addHandlerForMethod:@"POST"
-                              path:@"/toast"
-                      requestClass:[GCDWebServerDataRequest class] // 必须是 DataRequest 才能读取 Body
-                      processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
 
-                          NSError *jsonError;
-                          NSDictionary *jsonBody = getJsonBody(request,jsonError);
-                          if (jsonError) {
-                              return jsonFormatErrorResponse();
-                          }
-
-
-                          NSError *error = nil;
-                          showToastFromJson(jsonBody,&error);
-                          if(error){
-                              return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
-                                                                                message:@"发生异常"];
-                          }
-                          return staticSuccessResponse();
-                      }];
-
-    //隐藏悬浮窗
-    [webServer addHandlerForMethod:@"GET"
-                              path:@"/hideToast"
-                      requestClass:[GCDWebServerDataRequest class] // 必须是 DataRequest 才能读取 Body
-                      processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
-                          [Toast hideToast];
-
-                          return staticSuccessResponse();
-                      }];
-    // 巨魔悬浮窗
-    [webServer addHandlerForMethod:@"POST"
-                              path:@"/toast_V2"
-                      requestClass:[GCDWebServerDataRequest class]
-                      processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
-
-                          NSError *jsonError;
-                          NSDictionary *jsonBody = getJsonBody(request,jsonError);
-                          if (jsonError) {
-                              return jsonFormatErrorResponse();
-                          }
-
-                          NSString *text = jsonBody[@"text"];
-                          NSString *color = jsonBody[@"color"];
-
-                          if (!text || !color) {
-                              return missingParamResponse();
-                          }
-                          [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.toast" object:NULL userInfo:@{@"text": text,@"color":color} deliverImmediately: true];
-
-                          return staticSuccessResponse();
-                      }];
-
-    // 弹窗
-    [webServer addHandlerForMethod:@"POST"
-                              path:@"/alert"
-                      requestClass:[GCDWebServerDataRequest class] // 必须是 DataRequest 才能读取 Body
-                      processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
-
-                          NSError *jsonError;
-                          NSDictionary *jsonBody = getJsonBody(request,jsonError);
-                          if (jsonError) {
-                              return jsonFormatErrorResponse();
-                          }
-
-                          NSString *title = jsonBody[@"title"];
-                          NSString *text = jsonBody[@"text"];
-                          NSInteger time = [jsonBody[@"time"] integerValue];
-
-                          if (!text||!title||!time) {
-                              return missingParamResponse();
-                          }
-
-                          showAlertBox(title,text,time);
-                          return staticSuccessResponse();
-                      }];
-}
-void initAppHandle(GCDWebsocketServer *webServer)
-{
-    // 获取所有应用信息
-    [webServer addHandlerForMethod:@"GET" path:@"/apps" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSMutableArray *appsArray = getAllApplication();
-        NSDictionary *jsonData = @{
-                @"status": @"success",
-                @"applications": appsArray
-        };
-
-        return dataResponse(jsonData);
-    }];
-    // 获取应用信息
-    [webServer addHandlerForMethod:@"GET" path:@"/appInfo" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-
-        NSString *pkgName = request.query[@"pkgName"];
-
-        if (!pkgName) {
+static void initToastHandle(GCDWebsocketServer *server) {
+    MKSAddJSONHandler(server, @"/toast", ^GCDWebServerResponse *(NSDictionary *body) {
+        NSString *type = MKSString(body[@"type"]);
+        if (!type || !MKSString(body[@"content"]) ||
+            !MKSReadNumber(body[@"duration"], 0, INT_MAX, NULL) ||
+            (body[@"position"] && !MKSString(body[@"position"])) ||
+            (body[@"fontSize"] && !MKSReadInteger(body[@"fontSize"], 1, INT_MAX, NULL))) {
             return missingParamResponse();
         }
-        NSDictionary *appInfo = getApplication(pkgName);
-        NSDictionary *jsonData = @{
-                @"status": @"success",
-                @"info": appInfo
-        };
-
-        return dataResponse(jsonData);
-    }];
-
-    // 卸载应用
-    [webServer addHandlerForMethod:@"GET" path:@"/uninstall" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-
-        NSString *pkgName = request.query[@"pkgName"];
-
-        if (!pkgName) {
-            return missingParamResponse();
+        if (![@[@"hide", @"error", @"warning", @"message", @"success"] containsObject:type]) {
+            return MKSClientError(@"Invalid toast type");
         }
-        BOOL success = uninstall(pkgName);
-        NSDictionary *jsonData = @{
-                @"status": success?@"success":@"fail"
-        };
-
-        return dataResponse(jsonData);
-    }];
-
-    // 清理指定后台
-    [webServer addHandlerForMethod:@"GET" path:@"/killByBID" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-
-        NSString *pkgName = request.query[@"pkgName"];
-
-        if (!pkgName) {
-            return missingParamResponse();
-        }
-        killByBID(pkgName);
-
+        NSError *error = nil;
+        showToastFromJson(body, &error);
+        return error ? MKSClientError(error.localizedDescription) : staticSuccessResponse();
+    });
+    addGETHandler(server, @"/hideToast", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        [Toast hideToast];
         return staticSuccessResponse();
-    }];
-
-    // 清理所有后台
-    [webServer addHandlerForMethod:@"POST"
-                              path:@"/killAll"
-                      requestClass:[GCDWebServerDataRequest class] // 必须是 DataRequest 才能读取 Body
-                      processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request){
-
-                          GCDWebServerDataRequest *dataRequest = (GCDWebServerDataRequest *)request;
-
-                          NSError *jsonError;
-                          id jsonObject = [NSJSONSerialization JSONObjectWithData:dataRequest.data
-                                                                          options:kNilOptions
-                                                                            error:&jsonError];
-                          NSArray *jsonArray = @[];
-                          if (!jsonError && [jsonObject isKindOfClass:[NSArray class]]) {
-                              jsonArray = (NSArray *)jsonObject;
-                              NSLog(@"Received JSON Array: %@", jsonArray);
-                          }
-
-                          killAll(jsonArray);
-
-                          // 返回成功响应
-                          return dataResponse(@{
-                                  @"status": @"success",
-                                  @"receivedItems": @(jsonArray.count)
-                          });
-                      }];
-
-    // 切换应用
-    [webServer addHandlerForMethod:@"GET"
-                              path:@"/switchApp"
-                      requestClass:[GCDWebServerRequest class]
-                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-
-                          NSString *pkgName = request.query[@"pkgName"];
-
-                          if (!pkgName) {
-                              return missingParamResponse();
-                          }
-                          bringAppForeground(pkgName);
-                          return staticSuccessResponse();
-                      }];
+    });
+    MKSAddJSONHandler(server, @"/toast_V2", ^GCDWebServerResponse *(NSDictionary *body) {
+        NSString *text = MKSString(body[@"text"]);
+        NSString *color = MKSString(body[@"color"]);
+        if (!text || !color.length) return missingParamResponse();
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.toast" object:nil
+            userInfo:@{@"text": text, @"color": color} deliverImmediately:YES];
+        return staticSuccessResponse();
+    });
+    MKSAddJSONHandler(server, @"/alert", ^GCDWebServerResponse *(NSDictionary *body) {
+        NSString *title = MKSString(body[@"title"]);
+        NSString *text = MKSString(body[@"text"]);
+        double duration;
+        if (!title || !text || !MKSReadNumber(body[@"time"], DBL_MIN, INT_MAX, &duration)) {
+            return missingParamResponse();
+        }
+        showAlertBox(title, text, duration);
+        return staticSuccessResponse();
+    });
 }
 
-void initVpnHandle(GCDWebsocketServer *webServer)
-{
-    // 查看vpn状态
-    [webServer addHandlerForMethod:@"GET" path:@"/vpnStatus" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        BOOL isOpen = [DeviceConfigurator isVPNEnabled];
-        NSDictionary *jsonData = @{
-                @"status": @"success",
-                @"data": isOpen?@"open":@"close"
-        };
-        return dataResponse(jsonData);
+static void initAppHandle(GCDWebsocketServer *server) {
+    addGETHandler(server, @"/apps", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return dataResponse(@{@"status": @"success", @"applications": getAllApplication() ?: @[]});
+    });
+    addGETHandler(server, @"/appInfo", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *pkgName = MKSString(request.query[@"pkgName"]);
+        if (!pkgName.length) return missingParamResponse();
+        return dataResponse(@{@"status": @"success", @"info": getApplication(pkgName) ?: @{}});
+    });
+    addGETHandler(server, @"/uninstall", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *pkgName = MKSString(request.query[@"pkgName"]);
+        if (!pkgName.length) return missingParamResponse();
+        return dataResponse(@{@"status": uninstall(pkgName) ? @"success" : @"fail"});
+    });
+    addGETHandler(server, @"/killByBID", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *pkgName = MKSString(request.query[@"pkgName"]);
+        if (!pkgName.length) return missingParamResponse();
+        killByBID(pkgName);
+        return staticSuccessResponse();
+    });
+    // An absent body still means close all apps. An invalid exclusion list must not do so.
+    [server addHandlerForMethod:@"POST" path:@"/killAll" requestClass:[GCDWebServerDataRequest class]
+                  processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
+        NSArray *excludedApps = @[];
+        if (request.data.length) {
+            NSError *error = nil;
+            id body = [NSJSONSerialization JSONObjectWithData:request.data options:0 error:&error];
+            if (error || !MKSIsStringArray(body)) return MKSClientError(@"Expected an array of bundle identifiers");
+            excludedApps = body;
+        }
+        killAll(excludedApps);
+        return dataResponse(@{@"status": @"success", @"receivedItems": @(excludedApps.count)});
     }];
+    addGETHandler(server, @"/switchApp", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *pkgName = MKSString(request.query[@"pkgName"]);
+        if (!pkgName.length) return missingParamResponse();
+        bringAppForeground(pkgName);
+        return staticSuccessResponse();
+    });
+}
 
-    // 开启vpn
-    [webServer addHandlerForMethod:@"GET" path:@"/turnOnVPN" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+static void initVpnHandle(GCDWebsocketServer *server) {
+    addGETHandler(server, @"/vpnStatus", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return dataResponse(@{@"status": @"success", @"data": [DeviceConfigurator isVPNEnabled] ? @"open" : @"close"});
+    });
+    addGETHandler(server, @"/turnOnVPN", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
         [DeviceConfigurator turnOnVPN];
         return staticSuccessResponse();
-    }];
-
-    // 关闭vpn
-    [webServer addHandlerForMethod:@"GET" path:@"/turnOffVPN" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+    });
+    addGETHandler(server, @"/turnOffVPN", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
         [DeviceConfigurator turnOffVPN];
         return staticSuccessResponse();
-    }];
+    });
 }
-void initSettingHandle(GCDWebsocketServer *webServer)
-{
-       // 获取当前时区
-    [webServer addHandlerForMethod:@"GET" path:@"/getAllSetting" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString * timeZone = [DeviceConfigurator currentTimeZone];
-        NSString * lang = [DeviceConfigurator currentLanguage];
-        NSString * locale = [DeviceConfigurator currentLocale];
 
-        NSDictionary *jsonData = @{
-                @"status": @"success",
-                @"timeZone": timeZone,
-                @"lang": lang,
-                @"locale": locale
-        };
-        return dataResponse(jsonData);
-    }];
-
-    // 获取当前时区
-    [webServer addHandlerForMethod:@"GET" path:@"/currentTimeZone" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString * res = [DeviceConfigurator currentTimeZone];
-
-        NSDictionary *jsonData = @{
-                @"status": @"success",
-                @"data": res
-        };
-        return dataResponse(jsonData);
-    }];
-
-    // 获取当前语言
-    [webServer addHandlerForMethod:@"GET" path:@"/currentLanguage" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString * res = [DeviceConfigurator currentLanguage];
-
-        NSDictionary *jsonData = @{
-                @"status": @"success",
-                @"data": res
-        };
-        return dataResponse(jsonData);
-    }];
-
-    // 当前地区
-    [webServer addHandlerForMethod:@"GET" path:@"/currentLocale" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString * res = [DeviceConfigurator currentLocale];
-
-        NSDictionary *jsonData = @{
-                @"status": @"success",
-                @"data": res
-        };
-        return dataResponse(jsonData);
-    }];
-
-    // 设置地区
-    [webServer addHandlerForMethod:@"GET" path:@"/setLocale" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *locale = request.query[@"locale"];
-        if (!locale) {
-            return missingParamResponse();
-        }
+static void initSettingHandle(GCDWebsocketServer *server) {
+    addGETHandler(server, @"/getAllSetting", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return dataResponse(@{@"status": @"success", @"timeZone": [DeviceConfigurator currentTimeZone] ?: @"",
+            @"lang": [DeviceConfigurator currentLanguage] ?: @"", @"locale": [DeviceConfigurator currentLocale] ?: @""});
+    });
+    addGETHandler(server, @"/currentTimeZone", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return dataResponse(@{@"status": @"success", @"data": [DeviceConfigurator currentTimeZone] ?: @""});
+    });
+    addGETHandler(server, @"/currentLanguage", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return dataResponse(@{@"status": @"success", @"data": [DeviceConfigurator currentLanguage] ?: @""});
+    });
+    addGETHandler(server, @"/currentLocale", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return dataResponse(@{@"status": @"success", @"data": [DeviceConfigurator currentLocale] ?: @""});
+    });
+    addGETHandler(server, @"/setLocale", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *locale = MKSString(request.query[@"locale"]);
+        if (!locale.length) return missingParamResponse();
         [DeviceConfigurator setCurrentLocale:locale];
         return staticSuccessResponse();
-    }];
-
-    // 设置语言
-    [webServer addHandlerForMethod:@"GET" path:@"/setLanguage" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *lang = request.query[@"lang"];
-        if (!lang) {
-            return missingParamResponse();
-        }
+    });
+    addGETHandler(server, @"/setLanguage", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *lang = MKSString(request.query[@"lang"]);
+        if (!lang.length) return missingParamResponse();
         [DeviceConfigurator setCurrentLanguage:lang];
         return staticSuccessResponse();
-    }];
-
-    // 设置时区
-    [webServer addHandlerForMethod:@"GET" path:@"/setCurrentTimeZone" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *timeZone = request.query[@"timeZone"];
-        if (!timeZone) {
-            return missingParamResponse();
-        }
+    });
+    addGETHandler(server, @"/setCurrentTimeZone", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *timeZone = MKSString(request.query[@"timeZone"]);
+        if (!timeZone.length || ![NSTimeZone timeZoneWithName:timeZone]) return missingParamResponse();
         [DeviceConfigurator setCurrentTimeZone:timeZone];
         return staticSuccessResponse();
-    }];
-
-    [webServer addHandlerForMethod:@"POST" path:@"/setAllSetting" requestClass:[GCDWebServerDataRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *timeZone = request.query[@"timeZone"];
-        NSString *lang = request.query[@"lang"];
-        NSString *locale = request.query[@"locale"];
-        if (!timeZone&&!lang&&!locale) {
-            return missingParamResponse();
+    });
+    [server addHandlerForMethod:@"POST" path:@"/setAllSetting" requestClass:[GCDWebServerDataRequest class]
+                  processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
+        NSError *error = nil;
+        NSDictionary *body = MKSJSONDictionary(request.data, &error);
+        if (!body) return jsonFormatErrorResponse();
+        // Keep query parameters compatible with existing clients, while supporting a JSON-only request.
+        id timeZoneValue = request.query[@"timeZone"] ?: body[@"timeZone"];
+        id langValue = request.query[@"lang"] ?: body[@"lang"];
+        id localeValue = request.query[@"locale"] ?: body[@"locale"];
+        NSString *timeZone = MKSString(timeZoneValue);
+        NSString *lang = MKSString(langValue);
+        NSString *locale = MKSString(localeValue);
+        if ((!timeZoneValue && !langValue && !localeValue) ||
+            (timeZoneValue && (!timeZone.length || ![NSTimeZone timeZoneWithName:timeZone])) ||
+            (langValue && !lang.length) || (localeValue && !locale.length)) return missingParamResponse();
+        // Do not overwrite carrier preferences for a request containing only language / locale settings.
+        if (body[@"opts"] || body[@"country"] || body[@"country_name"]) {
+            if (![NSPropertyListSerialization propertyList:body isValidForFormat:NSPropertyListBinaryFormat_v1_0] ||
+                (body[@"opts"] && ![body[@"opts"] isKindOfClass:[NSArray class]])) {
+                return MKSClientError(@"Invalid carrier settings");
+            }
+            for (id item in body[@"opts"]) {
+                if (![item isKindOfClass:[NSDictionary class]]) return MKSClientError(@"Invalid carrier settings");
+            }
+            if (!processReceivedJSONData(body)) return MKSServerError(@"Failed to save carrier settings");
         }
-
-        GCDWebServerDataRequest* dataRequest = (GCDWebServerDataRequest*)request;
-        NSDictionary* jsonData = [NSJSONSerialization JSONObjectWithData:dataRequest.data
-                                                                options:0
-                                                                  error:nil];
-        if (jsonData) {
-            processReceivedJSONData(jsonData);
-            
-            [DeviceConfigurator setCurrentLocale:locale];
-            [DeviceConfigurator setCurrentTimeZone:timeZone];
-            [DeviceConfigurator setCurrentLanguage:lang];
-            return staticSuccessResponse();
-        } else {
-            return [GCDWebServerDataResponse responseWithJSONObject:@{@"status": @"error", @"message": @"Invalid JSON"}];
-        }
-
-     
-    }];
-}
-void initScreenHandle(GCDWebsocketServer *webServer)
-{
-    [webServer addHandlerForMethod:@"GET" path:@"/pressPowerBtn" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        [[STHIDEventGenerator sharedGenerator] powerPress];
+        if (locale) [DeviceConfigurator setCurrentLocale:locale];
+        if (timeZone) [DeviceConfigurator setCurrentTimeZone:timeZone];
+        if (lang) [DeviceConfigurator setCurrentLanguage:lang];
         return staticSuccessResponse();
     }];
-    
-    [webServer addHandlerForMethod:@"GET" path:@"/resetDirtyFrameCount" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+}
+
+static void initScreenHandle(GCDWebsocketServer *server) {
+    addGETHandler(server, @"/pressPowerBtn", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        dispatch_async(MKSInputQueue(), ^{ [[STHIDEventGenerator sharedGenerator] powerPress]; });
+        return staticSuccessResponse();
+    });
+    addGETHandler(server, @"/resetDirtyFrameCount", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
         [Screen resetDirtyFrameCount];
         return staticSuccessResponse();
-    }];
-    [webServer addHandlerForMethod:@"GET" path:@"/screenshot" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *quality = request.query[@"quality"];
-        if(!quality){
-            return missingParamResponse();
+    });
+    addGETHandler(server, @"/screenshot", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        double quality;
+        if (!MKSReadNumber(request.query[@"quality"], 0, 1, &quality)) return missingParamResponse();
+        NSError *error = nil;
+        NSData *image = [Screen takeScreenshotWithQuality_v2:quality error:&error];
+        if (error) return MKSServerError(error.localizedDescription);
+        if (!image.length) {
+            GCDWebServerResponse *response = [GCDWebServerResponse response];
+            response.statusCode = kGCDWebServerHTTPStatusCode_NoContent;
+            [response setValue:@"no-store" forAdditionalHeader:@"Cache-Control"];
+            return MKSApplyCORS(response);
         }
-        float floatValue = [quality floatValue];
-        NSData *imageData = [Screen takeScreenshotWithQuality_v2:floatValue];
-        if (imageData == nil || imageData.length == 0) {
-            NSLog(@"[Screenshot] Screen content unchanged, skipping image generation");
-            
-            // 返回 204 No Content 状态，表示成功但没有新内容
-            NSDictionary *responseInfo = @{
-                @"status": @"unchanged",
-                @"message": @"Screen content has not changed since last capture"
-            };
-            
-            GCDWebServerDataResponse *response = [GCDWebServerDataResponse responseWithJSONObject:responseInfo];
-            [response setStatusCode:204]; 
-            [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];
-            [response setValue:@"application/json" forAdditionalHeader:@"Content-Type"];
-            return response;
-        }
-        GCDWebServerDataResponse * response = [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
-        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
-        [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
-        return response;
-    }];
-
-    // 处理截图
-    [webServer addHandlerForMethod:@"GET" path:@"/screenshot_v2" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *quality = request.query[@"quality"];
-        if(!quality){
-            return missingParamResponse();
-        }
-        float floatValue = [quality floatValue];
-
-        NSData *imageData = [Screen takeScreenshotWithQuality:floatValue];
-        GCDWebServerDataResponse * response = [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
-        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
-        [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
-        return response;
-    }];
-
-    [webServer addHandlerForMethod:@"GET" path:@"/screenshot_original" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-
-        NSData *imageData = [Screen takeScreenshot_v2];
-
-        GCDWebServerDataResponse * response = [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
-        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
-        [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
-        return response;
-    }];
-    // 原图截图
-    [webServer addHandlerForMethod:@"GET" path:@"/screenshot_original_old" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-  
-        NSData *imageData = [Screen takeScreenshot];
-
-        GCDWebServerDataResponse * response = [GCDWebServerDataResponse responseWithData:imageData contentType:@"image/jpeg"];
-        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];       
-        [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];   
-        return response;
-    }];
-
-    // 流式截图接口
-    [webServer addHandlerForMethod:@"GET"
-                              path:@"/screenshotStream"
-                      requestClass:[GCDWebServerRequest class]
-                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-
-                          NSString *quality = request.query[@"quality"];
-                          NSString *fpsStr = request.query[@"fps"];
-
-                          if (!quality || !fpsStr) {
-                              return missingParamResponse();
-                          }
-
-                          float floatValue = [quality floatValue];
-                          int fps = [fpsStr intValue];
-                          if (fps <= 0 || fps > 60) fps = 10; // 安全兜底，限制范围
-
-                          int sleepTimeMicroseconds = 1000000 / fps; // 帧间隔时间 usleep 用微秒
-
-                          GCDWebServerStreamedResponse* response = [GCDWebServerStreamedResponse
-                                  responseWithContentType:@"multipart/x-mixed-replace; boundary=--frame"
-                                              streamBlock:^NSData* (NSError** error) {
-
-                                                  @autoreleasepool {
-                                                      NSData* imageData = [Screen takeScreenshotWithQuality:floatValue];
-                                                      if (!imageData) {
-                                                          if (error) *error = [NSError errorWithDomain:@"screenshot" code:500 userInfo:nil];
-                                                          return nil;
-                                                      }
-
-                                                      NSMutableData* frame = [NSMutableData data];
-                                                      [frame appendData:[@"--frame\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
-                                                      [frame appendData:[@"Content-Type: image/jpeg\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
-                                                      NSString* header = [NSString stringWithFormat:@"Content-Length: %lu\r\n\r\n", (unsigned long)imageData.length];
-                                                      [frame appendData:[header dataUsingEncoding:NSUTF8StringEncoding]];
-                                                      [frame appendData:imageData];
-                                                      [frame appendData:[@"\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
-
-                                                      usleep(sleepTimeMicroseconds); // 控制帧率
-                                                      return frame;
-                                                  }
-                                              }];
-
-                          return response;
-                      }];
-
+        return imageResponse(image, @"image/jpeg");
+    });
+    addGETHandler(server, @"/screenshot_v2", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        double quality;
+        if (!MKSReadNumber(request.query[@"quality"], 0, 1, &quality)) return missingParamResponse();
+        return imageResponse([Screen takeScreenshotWithQuality:quality], @"image/jpeg");
+    });
+    addGETHandler(server, @"/screenshot_original", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return imageResponse([Screen takeScreenshot_v2], @"image/png");
+    });
+    addGETHandler(server, @"/screenshot_original_old", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return imageResponse([Screen takeScreenshot], @"image/png");
+    });
+    addGETHandler(server, @"/screenshotStream", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        double quality;
+        int fps;
+        if (!MKSReadNumber(request.query[@"quality"], 0, 1, &quality) ||
+            !MKSReadInteger(request.query[@"fps"], 1, 60, &fps)) return missingParamResponse();
+        return MKSApplyCORS([MKSScreenshotStream responseWithQuality:quality fps:fps]);
+    });
 }
-void initHandle(GCDWebsocketServer *webServer)
-{
-    // 全局OPTIONS处理器
-    [webServer addHandlerForMethod:@"OPTIONS"
-                            pathRegex:@"^/"
-                    requestClass:[GCDWebServerRequest class]
-                    processBlock:^GCDWebServerResponse *(GCDWebServerRequest* request) {
-        GCDWebServerResponse* response = [GCDWebServerResponse response];
-        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];
-        [response setValue:@"*" forAdditionalHeader:@"Access-Control-Allow-Origin"];
-        [response setValue:@"Content-Type" forAdditionalHeader:@"Access-Control-Allow-Headers"];
-    
-        [response setValue:@"43200" forAdditionalHeader:@"Access-Control-max-age"];
-        return response;
-    }];
-    // 挂载自定义路径下的资源
-    NSString* customPath = jbroot(@"/usr/lib/mks_dist");
-    [webServer addGETHandlerForBasePath:@"/" 
-                        directoryPath:customPath 
-                        indexFilename:@"index.html"
-                        cacheAge:3600
-                        allowRangeRequests:YES];
 
-    initScreenHandle(webServer);
-    initWebSocket(webServer);
+static GCDWebServerResponse *setTrackingAuthorization(NSString *pkgName, BOOL reset) {
+    if (!pkgName.length) return missingParamResponse();
+    LSApplicationProxy *app = [LSApplicationProxy applicationProxyForIdentifier:pkgName];
+    if (!app.bundleURL) return MKSClientError(@"Application bundle not found");
+    CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, (__bridge CFURLRef)app.bundleURL);
+    if (!bundle) return MKSServerError(@"Failed to open application bundle");
+    if (reset) TCCAccessResetForBundle(kTCCServiceUserTracking, bundle);
+    else TCCAccessSetForBundle(kTCCServiceUserTracking, bundle, YES);
+    CFRelease(bundle);
+    return staticSuccessResponse();
+}
 
-    [webServer addHandlerForMethod:@"GET"
-                              path:@"/resetAV"
-                      requestClass:[GCDWebServerRequest class]
-                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *pkgName = request.query[@"pkgName"];
-
+static void initDeviceHandle(GCDWebsocketServer *server) {
+    addGETHandler(server, @"/resetAV", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *pkgName = MKSString(request.query[@"pkgName"]);
+        if (!pkgName.length) return missingParamResponse();
         resetIDFA();
         resetIDFV(pkgName);
-        NSDictionary * appInfo = getApplication(pkgName);
-
-        return dataResponse(appInfo);
-    }];
-
-    [webServer addHandlerForMethod:@"GET"
-                              path:@"/resetAuth"
-                      requestClass:[GCDWebServerRequest class]
-                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *pkgName = request.query[@"pkgName"];
-		LSApplicationProxy* appProxy = [LSApplicationProxy applicationProxyForIdentifier:pkgName];
-    	CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, (CFURLRef)appProxy.bundleURL);
-		TCCAccessResetForBundle(kTCCServiceUserTracking,bundle);
-
-        return staticSuccessResponse();
-    }];
-
-    [webServer addHandlerForMethod:@"GET"
-                              path:@"/setADAuth"
-                      requestClass:[GCDWebServerRequest class]
-                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *pkgName = request.query[@"pkgName"];
-		LSApplicationProxy* appProxy = [LSApplicationProxy applicationProxyForIdentifier:pkgName];
-    	CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, (CFURLRef)appProxy.bundleURL);
-		TCCAccessSetForBundle(kTCCServiceUserTracking,bundle,YES);
-
-        return staticSuccessResponse();
-    }];
-
-    [webServer addHandlerForMethod:@"POST" path:@"/keypress" requestClass:[GCDWebServerDataRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {  
-        NSError *jsonError;
-        NSDictionary *jsonBody = getJsonBody(request,jsonError);
-        if (jsonError) {
-            return jsonFormatErrorResponse();
-        }
-
-        NSString *text = jsonBody[@"text"];
-
-        if (!text) {
-            return missingParamResponse();
-        }
-        dispatch_async(dispatch_get_main_queue(), ^{            
-            // 遍历字符串中的每个字符
-            for (NSInteger i = 0; i < text.length; i++) {
-                // 使用dispatch_after实现延时
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(i * 0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                    NSString *singleChar = [text substringWithRange:NSMakeRange(i, 1)];
-                    [[STHIDEventGenerator sharedGenerator] keyPress:singleChar];
-                });
+        return dataResponse(getApplication(pkgName) ?: @{});
+    });
+    addGETHandler(server, @"/resetAuth", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return setTrackingAuthorization(MKSString(request.query[@"pkgName"]), YES);
+    });
+    addGETHandler(server, @"/setADAuth", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return setTrackingAuthorization(MKSString(request.query[@"pkgName"]), NO);
+    });
+    MKSAddJSONHandler(server, @"/keychain", ^GCDWebServerResponse *(NSDictionary *body) {
+        NSString *type = MKSString(body[@"type"]);
+        NSString *key = MKSString(body[@"key"]);
+        if (!type.length) return missingParamResponse();
+        NSString *tool = MKSShellQuote(jbroot(@"/usr/local/bin/keychain_clear"));
+        if ([type isEqualToString:@"query"]) {
+            NSString *output = runCommand([tool stringByAppendingString:@" -l"]);
+            if (!output) return MKSServerError(@"Failed to launch keychain tool");
+            return dataResponse(@{@"status": @"success", @"data": output});
+        } else if ([type isEqualToString:@"remove"]) {
+            if (!key.length) return missingParamResponse();
+            if (!runCommand([NSString stringWithFormat:@"%@ -r -g %@", tool, MKSShellQuote(key)])) {
+                return MKSServerError(@"Failed to launch keychain tool");
             }
-        });
-
-        return staticSuccessResponse();
-    }];
-
-    [webServer addHandlerForMethod:@"POST" path:@"/keychain" requestClass:[GCDWebServerDataRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {  
-        NSError *jsonError;
-        NSDictionary *jsonBody = getJsonBody(request,jsonError);
-        if (jsonError) {
-            return jsonFormatErrorResponse();
+        } else if ([type isEqualToString:@"removeAll"]) {
+            if (!runCommand([tool stringByAppendingString:@" -r -a"])) return MKSServerError(@"Failed to launch keychain tool");
+        } else {
+            return MKSClientError(@"Invalid keychain operation");
         }
-        NSString *type = jsonBody[@"type"];
-        NSString *key = jsonBody[@"key"];
-
-        if (!type || !key) {
+        return staticSuccessResponse();
+    });
+    addGETHandler(server, @"/GPT_PATH", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return dataResponse(@{@"status": @"success", @"data": jbroot(@"/var/jb/var/mobile/gptdata/")});
+    });
+    addGETHandler(server, @"/setAFIP", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *ip = MKSString(request.query[@"ip"]);
+        if (!ip.length) return missingParamResponse();
+        NSString *path = [jbroot(@"/var/mobile") stringByAppendingPathComponent:@"com.csmk.afIP.plist"];
+        if (![@{@"afIP": ip} writeToFile:path atomically:YES]) return MKSServerError(@"Failed to save IP settings");
+        return staticSuccessResponse();
+    });
+    addGETHandler(server, @"/setLocation", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *latitude = MKSString(request.query[@"Latitude"]);
+        NSString *longitude = MKSString(request.query[@"Longitude"]);
+        if (!MKSReadNumber(latitude, -90, 90, NULL) || !MKSReadNumber(longitude, -180, 180, NULL)) {
             return missingParamResponse();
         }
-        NSDictionary *response = @{
-            @"status": @"success"
-        };
-
-
-        NSString *kc = jbroot(@"/usr/local/bin/keychain_clear");
-        if([type isEqualToString:@"query"]){
-            NSString *stdOut = runCommand([kc stringByAppendingString:@" -l"]);
-            return dataResponse(@{
-                    @"status": @"success",
-                    @"data": stdOut
-            });
-        }else if([type isEqualToString:@"remove"]){
-            runCommand([kc stringByAppendingString:[@" -r -g " stringByAppendingString:key]]);
-        }else if([type isEqualToString:@"removeAll"]){
-            runCommand([kc stringByAppendingString:@" -r -a" ]);
+        NSString *path = [jbroot(@"/var/mobile") stringByAppendingPathComponent:@"com.csmk.locationfaker.plist"];
+        if (![@{@"Latitude": latitude, @"Longitude": longitude} writeToFile:path atomically:YES]) {
+            return MKSServerError(@"Failed to save location settings");
         }
-   
-        return dataResponse(response);
-    }];
-
-    [webServer addHandlerForMethod:@"GET" path:@"/GPT_PATH" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *path = jbroot(@"/var/jb/var/mobile/gptdata/");
-        NSDictionary *response = @{
-                    @"status": @"success",
-                    @"data": path
-            };
-        return dataResponse(response);
-    }];
-    // afIP
-    [webServer addHandlerForMethod:@"GET" path:@"/setAFIP" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *afIP = request.query[@"ip"];
-
-        if (!afIP) {
-            return missingParamResponse();
+        if (!runCommand(@"killall -9 locationd")) return MKSServerError(@"Failed to restart location service");
+        return staticSuccessResponse();
+    });
+    addGETHandler(server, @"/deviceInfo", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        int type;
+        if (!MKSReadInteger(request.query[@"type"], 0, INT_MAX, &type)) return missingParamResponse();
+        NSError *error = nil;
+        NSString *info = getDeviceInfoFromRawData(type, &error);
+        if (error) return MKSClientError(error.localizedDescription);
+        return dataResponse(@{@"status": @"success", @"data": info ?: @""});
+    });
+    addGETHandler(server, @"/currApp", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return dataResponse(@{@"status": @"success", @"data": getFrontMostApplication() ?: @""});
+    });
+    addGETHandler(server, @"/accounts", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSMutableArray *accountInfos = [NSMutableArray array];
+        for (SSAccount *account in getAllAccount()) {
+            [accountInfos addObject:@{
+                @"isActive": @([account isActive]), @"isLocalAccount": @([account isLocalAccount]),
+                @"firstName": [account firstName] ?: @"", @"lastName": [account lastName] ?: @"",
+                @"accountName": [account accountName] ?: @"", @"storeFrontIdentifier": [account storeFrontIdentifier] ?: @""
+            }];
         }
-        NSString *path = [jbroot(@"/var/mobile") stringByAppendingPathComponent:[@"com.csmk.afIP" stringByAppendingPathExtension:@"plist"]];
-        
-        NSDictionary *conf = @{@"afIP": afIP};
-        [conf writeToFile:path atomically:YES];
-        return staticSuccessResponse();
-    }];
-
-    // 虚拟定位
-    [webServer addHandlerForMethod:@"GET" path:@"/setLocation" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        NSString *latitude = request.query[@"Latitude"];
-        NSString *longitude = request.query[@"Longitude"];
-
-        if (!latitude || !longitude) {
-            return missingParamResponse();
-        }
-        NSString *path = [jbroot(@"/var/mobile") stringByAppendingPathComponent:[@"com.csmk.locationfaker" stringByAppendingPathExtension:@"plist"]];
-        
-        NSDictionary *conf = @{@"Latitude": latitude,
-                                    @"Longitude": longitude};
-        [conf writeToFile:path atomically:YES];
-        runCommand(@"killall -9 locationd");
-        return staticSuccessResponse();
-    }];
-
-    // 按下home键
-    [webServer addHandlerForMethod:@"GET" path:@"/pressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        [[STHIDEventGenerator sharedGenerator] menuPress];        
-        return staticSuccessResponse();
-    }];
-    // 双击home
-    [webServer addHandlerForMethod:@"GET" path:@"/doublePressHome" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        [[STHIDEventGenerator sharedGenerator] menuDoublePress];
-        return staticSuccessResponse();
-    }];
-    // 隐藏键盘
-    [webServer addHandlerForMethod:@"GET" path:@"/hideKeyboard" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(2), @"task_content": @(1)} deliverImmediately: true];
-
-        // 返回 JSON 格式数据
-        return staticSuccessResponse();
-    }];
-    // 输入文本
-    [webServer addHandlerForMethod:@"POST"
-                              path:@"/input"
-                      requestClass:[GCDWebServerDataRequest class] // 必须是 DataRequest 才能读取 Body
-                      processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
-
-                          NSError *jsonError;
-                          NSDictionary *jsonBody = getJsonBody(request,jsonError);
-                          if (jsonError) {
-                              return jsonFormatErrorResponse();
-                          }
-
-                          NSString *text = jsonBody[@"text"];
-
-                          if (!text) {
-                              return missingParamResponse();
-                          }
-                          [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(1), @"task_content": text} deliverImmediately: true];
-
-                          return staticSuccessResponse();
-                      }];
-
-    // 执行命令
-    [webServer addHandlerForMethod:@"POST"
-                              path:@"/runShell"
-                      requestClass:[GCDWebServerDataRequest class] // 必须是 DataRequest 才能读取 Body
-                      processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
-
-                          NSError *jsonError;
-                          NSDictionary *jsonBody = getJsonBody(request,jsonError);
-                          if (jsonError) {
-                              return jsonFormatErrorResponse();
-                          }
-
-
-                          NSString *cmd = jsonBody[@"cmd"];
-
-                          if (!cmd) {
-                              return missingParamResponse();
-                          }
-                          NSString *res = runCommand(cmd);
-                          return dataResponse(@{
-                                  @"status": @"success",
-                                  @"data": res
-                          });
-                      }];
-
-    // 删除文本
-    [webServer addHandlerForMethod:@"GET"
-                              path:@"/del"
-                      requestClass:[GCDWebServerRequest class]
-                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-
-                          NSString *num = request.query[@"num"];
-
-                          if (!num) {
-                              return missingParamResponse();
-                          }
-
-                          [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(4), @"task_content": num} deliverImmediately: true];
-
-                          return staticSuccessResponse();
-                      }];
-
-    // 移动光标
-    [webServer addHandlerForMethod:@"GET"
-                              path:@"/moveCursor"
-                      requestClass:[GCDWebServerRequest class]
-                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-
-                          NSString *num = request.query[@"num"];
-
-                          if (!num) {
-                              return missingParamResponse();
-                          }
-
-                          [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:NULL userInfo:@{@"task_id": @(3), @"task_content": num} deliverImmediately: true];
-
-                          return staticSuccessResponse();
-                      }];
-
-
-    //点击某个坐标
-    [webServer addHandlerForMethod:@"POST"
-                              path:@"/touch"
-                      requestClass:[GCDWebServerDataRequest class] // 必须是 DataRequest 才能读取 Body
-                      processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
-
-                            NSError *jsonError;
-                            NSDictionary *jsonBody = getJsonBody(request,jsonError);
-                            if (jsonError) {
-                                return jsonFormatErrorResponse();
-                            }
-
-                            NSNumber *xValue = jsonBody[@"x"];
-                            NSNumber *yValue = jsonBody[@"y"];
-                            CGPoint point = CGPointMake(xValue.floatValue, yValue.floatValue);
-                            NSNumber *indexValue = jsonBody[@"index"];
-                            NSString *typeValue = jsonBody[@"type"];
-                            // jsonToEventDataAndPerform(jsonBody, &error);
-                            if ([typeValue isEqualToString:@"down"] || [typeValue isEqualToString:@"move"]) {
-                                [[STHIDEventGenerator sharedGenerator] touchDown:point];
-                            }  else if ([typeValue isEqualToString:@"up"]) {
-                                [[STHIDEventGenerator sharedGenerator] liftUp:point];
-                            }else if ([typeValue isEqualToString:@"tap"]) {
-                                [[STHIDEventGenerator sharedGenerator] tap:point];
-                            }  else {
-                                      return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
-                                                                                    message:@"点击异常"];
-                            }           
-                            return staticSuccessResponse();
-                        }];
-
-    //获取设备信息
-    [webServer addHandlerForMethod:@"GET"
-                              path:@"/deviceInfo"
-                      requestClass:[GCDWebServerRequest class]
-                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-
-                          NSString *type = request.query[@"type"];
-
-                          if (!type) {
-                              return missingParamResponse();
-                          }
-                          NSError *err = nil;
-                          int intValue = [type intValue];
-                          NSString *res = getDeviceInfoFromRawData(intValue,  &err);
-                          if(err){
-                              return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
-                                                                                message:@"发生异常"];
-                          }
-                          NSDictionary *response = @{
-                                  @"status": @"success",
-                                  @"data": res
-                          };
-
-                          return dataResponse(response);
-                      }];
-
-
-    // 设置剪切板内容
-    [webServer addHandlerForMethod:@"POST"
-                              path:@"/setClip"
-                      requestClass:[GCDWebServerDataRequest class] // 必须是 DataRequest 才能读取 Body
-                      processBlock:^GCDWebServerResponse *(GCDWebServerDataRequest *request) {
-
-                          NSError *jsonError;
-                          NSDictionary *jsonBody = getJsonBody(request,jsonError);
-                          if (jsonError) {
-                              return jsonFormatErrorResponse();
-                          }
-
-
-                          NSString *text = jsonBody[@"text"];
-
-                          if (!text) {
-                              return missingParamResponse();
-                          }
-                          UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
-                          if (pasteboard.string){
-                              pasteboard.string = text;
-                          }else {
-                              return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest
-                                                                                message:@"操作剪切板失败，请先随便找个东西复制一下"];
-                          }
-                          return staticSuccessResponse();
-                      }];
-
-    //获取剪切板内容
-    [webServer addHandlerForMethod:@"GET" path:@"/getClip" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
-        NSString *res;
-        if (pasteboard.string){
-            res = pasteboard.string;
-        }else {
-            res = @"获取失败";
-        }
-        NSDictionary *jsonData = @{
-                @"status": @"success",
-                @"data": res,
-        };
-        // 返回 JSON 格式数据
-        return dataResponse(jsonData);
-    }];
-
-    //当前应用
-    [webServer addHandlerForMethod:@"GET" path:@"/currApp" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-        // NSDictionary *infoDictionary = [[NSBundle mainBundle] infoDictionary];//获取app版本信息
-        // NSString *app_Name = [infoDictionary objectForKey:@"CFBundleDisplayName"];
-        id app_Name = getFrontMostApplication();
-        NSDictionary *jsonData = @{
-                @"status": @"success",
-                @"data": app_Name,
-        };
-        // 返回 JSON 格式数据
-        return dataResponse(jsonData);
-    }];
-
-    // 获取所有登录过的苹果账号
-    [webServer addHandlerForMethod:@"GET"
-                              path:@"/accounts"
-                      requestClass:[GCDWebServerRequest class]
-                      processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
-
-                          NSArray *accounts = getAllAccount();
-                          NSMutableArray *accountInfos = [NSMutableArray array];
-
-                          for (SSAccount *account in accounts) {
-                              NSDictionary *accountInfo = @{
-                                      @"isActive": @([account isActive]),
-                                      @"isLocalAccount": @([account isLocalAccount]),
-                                      @"firstName": [account firstName] ?: @"",
-                                      @"lastName": [account lastName] ?: @"",
-                                      @"accountName": [account accountName] ?: @"",
-                                      @"storeFrontIdentifier": [account storeFrontIdentifier] ?: @""
-                              };
-                              [accountInfos addObject:accountInfo];
-                          }
-                          NSDictionary *response = @{
-                                  @"status": @"success",
-                                  @"data": accountInfos
-                          };
-
-                          return dataResponse(response);
-                      }];
-
-
-    //重启用户空间
-    [webServer addHandlerForMethod:@"GET" path:@"/rebootUserspace" requestClass:[GCDWebServerRequest class] processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        return dataResponse(@{@"status": @"success", @"data": accountInfos});
+    });
+    addGETHandler(server, @"/rebootUserspace", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
         rebootUserspace();
+        
         return staticSuccessResponse();
-    }];
-
-    initAppHandle(webServer);
-
-    initToastHandle(webServer);
-
-    initVpnHandle(webServer);
-
-    initSettingHandle(webServer);
-
+    });
 }
 
-BOOL processReceivedJSONData(NSDictionary* jsonData) {
-    // 获取 plist 文件路径
-    NSString* plistPath = jbroot(@"/var/mobile/Library/Preferences/GptXinjiParamsData"); // 你需要实现这个方法来获取 plist 文件路径
-    
-    // 读取现有的 plist 内容
-    NSMutableDictionary* plistDict = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
-    if (!plistDict) {
-        plistDict = [NSMutableDictionary dictionary];
+static void initInputHandle(GCDWebsocketServer *server) {
+    addGETHandler(server, @"/pressHome", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        dispatch_async(MKSInputQueue(), ^{ [[STHIDEventGenerator sharedGenerator] menuPress]; });
+        return staticSuccessResponse();
+    });
+    addGETHandler(server, @"/doublePressHome", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        dispatch_async(MKSInputQueue(), ^{ [[STHIDEventGenerator sharedGenerator] menuDoublePress]; });
+        return staticSuccessResponse();
+    });
+    addGETHandler(server, @"/hideKeyboard", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:nil
+            userInfo:@{@"task_id": @(2), @"task_content": @(1)} deliverImmediately:YES];
+        return staticSuccessResponse();
+    });
+    MKSAddJSONHandler(server, @"/input", ^GCDWebServerResponse *(NSDictionary *body) {
+        NSString *text = MKSString(body[@"text"]);
+        if (!text) return missingParamResponse();
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:nil
+            userInfo:@{@"task_id": @(1), @"task_content": text} deliverImmediately:YES];
+        return staticSuccessResponse();
+    });
+    MKSAddJSONHandler(server, @"/keypress", ^GCDWebServerResponse *(NSDictionary *body) {
+        NSString *text = MKSString(body[@"text"]);
+        if (!text) return missingParamResponse();
+        // Enumerate composed characters so surrogate pairs are never split.
+        __block NSUInteger index = 0;
+        [text enumerateSubstringsInRange:NSMakeRange(0, text.length) options:NSStringEnumerationByComposedCharacterSequences
+            usingBlock:^(NSString *character, NSRange range, NSRange enclosingRange, BOOL *stop) {
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(index++ * 0.1 * NSEC_PER_SEC)), MKSInputQueue(), ^{
+                    [[STHIDEventGenerator sharedGenerator] keyPress:character];
+                });
+            }];
+        return staticSuccessResponse();
+    });
+    MKSAddJSONHandler(server, @"/runShell", ^GCDWebServerResponse *(NSDictionary *body) {
+        NSString *command = MKSString(body[@"cmd"]);
+        if (!command.length) return missingParamResponse();
+        NSString *output = runCommand(command);
+        if (!output) return MKSServerError(@"Failed to execute command");
+        return dataResponse(@{@"status": @"success", @"data": output});
+    });
+    addGETHandler(server, @"/del", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *num = MKSString(request.query[@"num"]);
+        if (!MKSReadInteger(num, 0, INT_MAX, NULL)) return missingParamResponse();
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:nil
+            userInfo:@{@"task_id": @(4), @"task_content": num} deliverImmediately:YES];
+        return staticSuccessResponse();
+    });
+    addGETHandler(server, @"/moveCursor", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        NSString *num = MKSString(request.query[@"num"]);
+        if (!MKSReadInteger(num, INT_MIN, INT_MAX, NULL)) return missingParamResponse();
+        [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.csmk.keyboardcontrol" object:nil
+            userInfo:@{@"task_id": @(3), @"task_content": num} deliverImmediately:YES];
+        return staticSuccessResponse();
+    });
+    MKSAddJSONHandler(server, @"/touch", ^GCDWebServerResponse *(NSDictionary *body) {
+        if (!MKSIsValidTouch(body)) return missingParamResponse();
+        CGPoint point = CGPointMake([body[@"x"] doubleValue], [body[@"y"] doubleValue]);
+        NSString *type = body[@"type"];
+        dispatch_async(MKSInputQueue(), ^{
+            STHIDEventGenerator *generator = [STHIDEventGenerator sharedGenerator];
+            if ([type isEqualToString:@"up"]) [generator liftUp:point];
+            else if ([type isEqualToString:@"tap"]) [generator tap:point];
+            else [generator touchDown:point];
+        });
+        return staticSuccessResponse();
+    });
+    MKSAddJSONHandler(server, @"/setClip", ^GCDWebServerResponse *(NSDictionary *body) {
+        NSString *text = MKSString(body[@"text"]);
+        if (!text) return missingParamResponse();
+        MKSOnMainThread(^{
+            [UIPasteboard generalPasteboard].string = text;
+        });
+        return staticSuccessResponse();
+    });
+    addGETHandler(server, @"/getClip", ^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        __block NSString *text;
+        MKSOnMainThread(^{
+            text = [UIPasteboard generalPasteboard].string;
+        });
+        return dataResponse(@{@"status": @"success", @"data": text ?: @"获取失败"});
+    });
+}
+
+void initHandle(GCDWebsocketServer *server) {
+    [server addHandlerForMethod:@"OPTIONS" pathRegex:@"^/" requestClass:[GCDWebServerRequest class]
+                  processBlock:^GCDWebServerResponse *(GCDWebServerRequest *request) {
+        GCDWebServerResponse *response = MKSApplyCORS([GCDWebServerResponse response]);
+        response.statusCode = kGCDWebServerHTTPStatusCode_NoContent;
+        [response setValue:@"43200" forAdditionalHeader:@"Access-Control-Max-Age"];
+        return response;
+    }];
+    // Register the static fallback first so API routes take precedence in GCDWebServer's LIFO order.
+    [server addGETHandlerForBasePath:@"/" directoryPath:jbroot(@"/usr/lib/mks_dist")
+        indexFilename:@"index.html" cacheAge:3600 allowRangeRequests:YES];
+    initScreenHandle(server);
+    initWebSocket(server);
+    initDeviceHandle(server);
+    initInputHandle(server);
+    initAppHandle(server);
+    initToastHandle(server);
+    initVpnHandle(server);
+    initSettingHandle(server);
+}
+
+BOOL processReceivedJSONData(NSDictionary *body) {
+    if (![body isKindOfClass:[NSDictionary class]] ||
+        ![NSPropertyListSerialization propertyList:body isValidForFormat:NSPropertyListBinaryFormat_v1_0] ||
+        (body[@"opts"] && ![body[@"opts"] isKindOfClass:[NSArray class]])) return NO;
+    NSMutableArray *operators = [NSMutableArray array];
+    for (id option in body[@"opts"]) {
+        if (![option isKindOfClass:[NSDictionary class]]) return NO;
+        [operators addObject:@{
+            @"country": body[@"country"] ?: @"", @"country_code": body[@"country_code"] ?: @"",
+            @"country_name": body[@"country_name"] ?: @"", @"ios": body[@"ios"] ?: @"",
+            @"mcc": option[@"mcc"] ?: @"", @"mnc": option[@"mnc"] ?: @"",
+            @"name": option[@"name"] ?: @"", @"network": option[@"network"] ?: @""
+        }];
     }
-    
-    // 处理 country_name 的 Unicode 转义序列
-    NSString* countryName = jsonData[@"country_name"];
-    // if ([countryName isKindOfClass:[NSString class]]) {
-    //     countryName = decodeUnicodeString(countryName);
-    // } else {
-    //     countryName = @"阿塞拜疆"; // 默认值
-    // }
-    
-    // 构建 autoOprData 字典
-    NSMutableDictionary* autoOprData = [NSMutableDictionary dictionary];
-    
-    // 添加 ControyName
-    autoOprData[@"ControyName"] = countryName;
-    
-    // 处理运营商数组
-    NSArray* optsArray = jsonData[@"opts"];
-    NSMutableArray* operArr = [NSMutableArray array];
-    
-    for (NSDictionary* opt in optsArray) {
-        NSMutableDictionary* operatorDict = [NSMutableDictionary dictionary];
-        
-        // 添加公共字段
-        operatorDict[@"country"] = jsonData[@"country"] ?: @"";
-        operatorDict[@"country_code"] = jsonData[@"country_code"] ?: @"";
-        operatorDict[@"country_name"] = countryName;
-        operatorDict[@"ios"] = jsonData[@"ios"] ?: @"";
-        
-        // 添加运营商特定字段
-        operatorDict[@"mcc"] = opt[@"mcc"] ?: @"";
-        operatorDict[@"mnc"] = opt[@"mnc"] ?: @"";
-        operatorDict[@"name"] = opt[@"name"] ?: @"";
-        operatorDict[@"network"] = opt[@"network"] ?: @"";
-        
-        [operArr addObject:operatorDict];
+    @synchronized ([DeviceConfigurator class]) {
+        NSString *path = jbroot(@"/var/mobile/Library/Preferences/GptXinjiParamsData");
+        NSMutableDictionary *preferences = [NSMutableDictionary dictionaryWithContentsOfFile:path] ?: [NSMutableDictionary dictionary];
+        preferences[@"autoOprData"] = @{@"ControyName": body[@"country_name"] ?: @"", @"OperArr": operators};
+        return [preferences writeToFile:path atomically:YES];
     }
-    
-    // 添加运营商数组到 autoOprData
-    autoOprData[@"OperArr"] = [operArr copy];
-    
-    // 更新 plist 字典
-    plistDict[@"autoOprData"] = [autoOprData copy];
-    
-    // 写回 plist 文件
-    return [plistDict writeToFile:plistPath atomically:YES];
-    
-    
 }

@@ -1,7 +1,7 @@
 #include "AlertBox.h"
 
 
-void showAlertBox(NSString* title, NSString* content, int dismissTime)
+void showAlertBox(NSString* title, NSString* content, NSTimeInterval dismissTime)
 {
     NSMutableDictionary* dict = [NSMutableDictionary dictionary];
     [dict setObject: title forKey: (__bridge NSString*)kCFUserNotificationAlertHeaderKey];
@@ -10,11 +10,15 @@ void showAlertBox(NSString* title, NSString* content, int dismissTime)
     
     SInt32 error = 0;
     CFUserNotificationRef alert = CFUserNotificationCreate(NULL, 0, kCFUserNotificationPlainAlertLevel, &error, (__bridge CFDictionaryRef)dict);
+    if (!alert) {
+        NSLog(@"Failed to create alert: %d", (int)error);
+        return;
+    }
 
     CFOptionFlags response;
     
      if((error) || (CFUserNotificationReceiveResponse(alert, dismissTime, &response))) {
-        NSLog(@"com.zjx.springboard: alert error or no user response after %d seconds for title: %@. Content %@", dismissTime, title, content);
+        NSLog(@"com.zjx.springboard: alert error or no user response after %g seconds for title: %@. Content %@", dismissTime, title, content);
      }
     
 
