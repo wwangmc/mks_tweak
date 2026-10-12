@@ -1,2 +1,6 @@
 # Logos sources use .xm too; override global audio-module binary attributes.
 *.xm text diff merge
+
+# Keep CI configuration and shell scripts usable after a Windows checkout.
+*.yml text eol=lf
+*.sh text eol=lf
