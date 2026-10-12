@@ -1,150 +1,92 @@
-[Windows / GitHub Actions 编译与下载说明](docs/github-actions.md)
+# MKS Tweak
 
-可搭配iproxy实现usb有线传输 命令iproxy 8081:8081 以下api的ipHost可全替换localhost iproxy有依赖环境具体上网搜 一般装完爱思就有
+[![Build Theos packages](https://github.com/wwangmc/mks_tweak/actions/workflows/build.yml/badge.svg)](https://github.com/wwangmc/mks_tweak/actions/workflows/build.yml)
 
-[获取截屏] quality图片质量越低越差但会更流畅
-GET http://{ip}:8081/screenshot?quality=0.3
+通过电脑控制越狱 iOS 设备的工具集。插件在 SpringBoard 中启动端口为 **8081** 的服务，提供浏览器控制页面、HTTP API 和 WebSocket 输入接口，适用于设备调试、屏幕查看和自动化操作。
 
-[获取截屏] 
-GET http://{ip}:8081/screenshot_original
+支持 rootfull（有根）、rootless（无根）和 RootHide 三种打包模式。Windows 用户可以通过 GitHub Actions 构建 `.deb`，无需在本机配置 iOS 编译环境。
 
-[锁屏（按下电源键）] 
-GET http://{ip}:8081/pressPowerBtn
+## 文档导航
 
-[虚拟定位]
-GET http://{ip}:8081/setLocation?Latitude=28.9050&Longitude=118.5270
+| 想做什么 | 从这里开始 |
+| --- | --- |
+| 下载、安装并连接手机 | [快速入门](docs/quickstart.md) |
+| 在 Windows 上编译并下载安装包 | [GitHub Actions 编译说明](docs/github-actions.md) |
+| 接入截图、触摸、应用管理等能力 | [HTTP API 与 WebSocket 参考](docs/api.md) |
+| 本地构建、理解代码结构、参与维护 | [开发指南](docs/development.md) |
+| 排查无法连接、黑屏、输入失败等问题 | [常见问题](docs/quickstart.md#常见问题) |
 
-[获取前台应用] 
-GET http://{ip}:8081/currApp
+## 功能概览
 
-[获取截屏流式返回]
-GET http://{ip}:8081/screenshotStream?quality=0.3&fps=15
+| 能力 | 说明 |
+| --- | --- |
+| 屏幕查看 | JPEG / PNG 截图、画面变化检测、MJPEG 截图流 |
+| 远程操作 | 单点触摸、Home / 电源键、文本输入、光标移动与删除 |
+| 应用管理 | 获取应用列表和沙盒路径、切换前台应用、关闭后台、卸载 |
+| 设备设置 | 查询设备与电池信息、切换语言 / 地区 / 时区、控制现有 VPN |
+| 调试辅助 | 剪贴板、弹窗 / Toast、Shell 执行、读取字典型 plist |
+| 配套模块 | 虚拟定位、App Store 账号切换界面、IPA 安装、钥匙串清理 |
 
+各项能力依赖 iOS 私有 API 和越狱环境。构建目标中的最低 iOS 版本不等于所有功能都已在该版本真机验证；请按设备实际环境选择安装包并联调。
 
-[输入文本]
-POST http://{ip}:8081/input
-{
-    "text": "nb666"
-}
+## 快速开始
 
-[执行命令] （可搭配curl查询ip）(可搭配 uiopen命令实现打开url)
-POST http://{ip}:8081/runShell
-{
-	"cmd": "ls /var"
-}
+1. 在 [Actions](https://github.com/wwangmc/mks_tweak/actions/workflows/build.yml) 中选择目标代码版本的成功构建，下载适合越狱环境的产物。
+2. 解压 ZIP，将 `.deb` 传到手机，通过越狱包管理器安装，并按提示重新加载 SpringBoard。
+3. 将电脑与手机接入同一可信局域网，浏览器访问 `http://<手机IP>:8081/`。
+4. 也可以通过 USB 转发端口，再访问 `http://127.0.0.1:8081/`：
 
-[切换app]
-GET http://{ip}:8081/switchApp?pkgName=com.liguangming.Shadowrocket
+   ```sh
+   iproxy 8081:8081
+   ```
 
-[卸载应用]
-GET http://{ip}:8081/uninstall?pkgName=com.liguangming.Shadowrocket
+`iproxy` 需单独安装；设备信任、USB 驱动及多设备选择见[连接说明](docs/quickstart.md#连接方式)。
 
-[关闭后台应用](模拟app switcher视图滑掉应用 回到桌面再调用才能看到视图中找不到应用 不回桌面也能正常关闭)
-GET http://{ip}:8081/killByBID?pkgName=com.liguangming.Shadowrocket
+用 PowerShell 检查服务并保存一张截图：
 
-[关闭所有后台应用](模拟app switcher视图滑掉应用 post参数为排除在外的应用不传就全关)
-POST http://{ip}:8081/killAll
-["com.liguangming.Shadowrocket"]
+```powershell
+$baseUrl = 'http://127.0.0.1:8081' # 局域网连接时改成手机 IP
+Invoke-RestMethod "$baseUrl/deviceInfo?type=30"
+Invoke-WebRequest "$baseUrl/screenshot_original" -OutFile screenshot.png
+```
 
-[home键]
-GET http://{ip}:8081/pressHome
+## 安装包选择
 
-[双击home](切换出应用列表视图)
-GET http://{ip}:8081/doublePressHome
+下表描述仓库当前 GitHub Actions 的构建配置：
 
-[获取应用信息]（可判断应用下载状态 未下载 下载中 已安装 也可获取应用沙盒目录）
-GET http://{ip}:8081/appInfo?pkgName=com.liguangming.Shadowrocket
+| 越狱环境 | 下载产物 | 构建参数 | 架构 | 部署目标 |
+| --- | --- | --- | --- | --- |
+| rootfull（有根） | `mks-rootfull` | `TYPE=0` | arm64 | iOS 13.0+ |
+| rootless（无根） | `mks-rootless` | `TYPE=1` | arm64、arm64e | iOS 14.0+ |
+| RootHide | `mks-roothide` | `TYPE=2` | arm64、arm64e | iOS 14.0+ |
 
-[获取获取所有应用信息 包括越狱插件 上面的也是]
-GET http://{ip}:8081/apps
+以越狱环境选择模式，不要仅根据系统版本选择。根目录 `Makefile` 默认使用 `TYPE=1`；完整参数、架构例外和构建依赖见[编译说明](docs/github-actions.md)。
 
-[获取应用商店历史登陆过的苹果账号](返回值中isActive字段为true时说明是当前登陆的)
-GET http://{ip}:8081/accounts
+## 使用边界
 
-[向当前输入框输入当前苹果账号的密码](注意需要数据库中appleinfo表中存在该账号 没有就自己加)
-GET http://{ip}:8081/inputPwd
+当前服务监听所有网络接口，HTTP / WebSocket 没有配置身份认证，CORS 允许任意来源。接口可执行高权限命令、卸载应用、读取设备数据并清理钥匙串。请只在自己管理的设备和可信网络中使用，避免将 8081 端口映射到公网；USB 转发不会关闭设备本身的局域网监听。
 
-[获取剪切板内容]
-GET http://{ip}:8081/getClip
+部分修改通过异步任务或跨进程通知执行，`{"status":"success"}` 通常表示请求已接收，不保证目标应用已完成操作。钥匙串清理、卸载和重启等操作请先阅读[对应接口说明](docs/api.md)。
 
-[写入内容至剪切板](需要剪切板中已有内容) {没啥用要输入就用上面的input}
-POST http://{ip}:8081/setClip
-{
-  "text": "3838测试11"
-}
+## 项目结构
 
-[关闭键盘]
-GET http://{ip}:8081/hideKeyboard
+```text
+mks_tweak/
+├── pccontrol/       # SpringBoard HTTP / WebSocket 服务、截图和输入
+├── appdelegate/     # 应用内键盘通知接收与文本操作
+├── StoreSwitcher2/  # App Store 账号切换界面
+├── locationfaker/   # CLLocation 坐标替换
+├── roothelp/        # 高权限 Shell 执行辅助工具
+├── keychain_clear/  # 钥匙串数据库操作工具
+├── appinst/         # IPA 命令行安装工具
+├── docs/            # 使用、接口、构建与开发文档
+├── .github/workflows/build.yml
+├── Makefile         # 聚合构建入口
+└── tp.py            # Python 截图轮询示例
+```
 
+## 反馈与第三方代码
 
-[移动光标](负数左移 正数右移)
-GET http://{ip}:8081/moveCursor?num=-2
+提交问题时请附上 iOS 版本、越狱类型、安装包对应的提交或 Actions 运行链接、复现步骤及错误响应，并去除账号、设备标识等个人信息。维护说明见[开发指南](docs/development.md#提交修改与问题反馈)。
 
-[删除文本]
-GET http://{ip}:8081/del?num=2
-
-[弹窗]
-POST http://{ip}:8081/alert
-{
-  "title": "success",
-  "text": "nb666",
-  "time": 2.5
-}
-
-[悬浮窗] 
-POST http://{ip}:8081/toast
-{
-	"type": "success",
-	"content": "nb666",
-	"duration": 2.5,
-	"position": "top",  
-	"fontSize": 16                  
-}
-
-[获取设备信息]（type可选 1屏幕大小 2屏幕处于横屏或竖屏 3 screen scale 30 设备信息 型号版本等 31 电池信息）
-GET http://{ip}:8081/deviceInfo?type=1
-
-
-[点击事件](
-	type可选 
-	up 松开 
-	down 按下
-	move 移动
-)
-POST http://{ip}:8081/touch
-{
-	"x": 119,
-	"y": 871,
-	"index": 1,
-	"type": "down"
-}
-
-[重启用户空间](两秒内来回拨动静音键可快速触发)
-GET http://{ip}:8081/rebootUserspace
-
-[查看vpn状态]
-GET http://{ip}:8081/vpnStatus
-
-[开启vpn]
-GET http://{ip}:8081/turnOnVPN
-
-[关闭vpn]
-GET http://{ip}:8081/turnOffVPN
-
-[获取地区]
-GET http://{ip}:8081/currentLocale
-
-[获取语言]
-GET http://{ip}:8081/currentLanguage
-
-[获取时区]
-GET http://{ip}:8081/currentTimeZone
-
-[设置地区](示例参数为美国)
-GET http://{ip}:8081/setLocale?locale=us
-
-[设置语言](示例参数为美国)
-GET http://{ip}:8081/setLanguage?lang=en-US
-
-[设置时区](示例参数为美国)
-GET http://{ip}:8081/setCurrentTimeZone?timeZone=America/New_York
+仓库包含第三方组件，请保留各目录和源文件中的作者、版权及许可声明。`appinst` 的上游说明见 [appinst/README.md](appinst/README.md)，HID 源码也保留了原有许可声明；当前仓库没有统一的顶层 LICENSE 文件。

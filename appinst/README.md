@@ -1,3 +1,9 @@
+> **MKS 集成说明**：本目录是随 MKS 聚合构建的 IPA 安装工具。下面保留的是上游项目说明，其系统版本范围、独立安装渠道与构建路径不能直接视为本仓库整包的兼容性承诺。
+>
+> 本仓库已经包含 `libs/libzip.a`，当前 Makefile 从此目录链接，不需要按下文复制到 `$THEOS/libs/`。构建 MKS 请使用[项目开发指南](../docs/development.md)，安装整包请使用[快速入门](../docs/quickstart.md)。
+>
+> 工具基本用法为 `appinst <IPA文件路径>`；对未签名或特殊签名 IPA 的安装依赖仍需按设备实际环境配置。
+
 # appinst (App Installer)
 ###### A command-line IPA app installer for iOS 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, and 18.
 
