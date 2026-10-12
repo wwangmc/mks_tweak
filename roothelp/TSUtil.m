@@ -4,7 +4,7 @@
 #import <spawn.h>
 #import <sys/sysctl.h>
 #import <mach-o/dyld.h>
-#import <libroot.h>
+#import <roothide.h>
 
 enum {
     PERSONA_INVALID = 0,

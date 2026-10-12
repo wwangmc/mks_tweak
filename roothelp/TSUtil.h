@@ -1,5 +1,5 @@
 #include <spawn.h>
-#include <libroot.h>
+#include <roothide.h>
 #include <sys/sysctl.h>
 #include <mach-o/dyld.h>
 #include <Foundation/Foundation.h>

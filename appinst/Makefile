@@ -8,7 +8,7 @@ appinst_CFLAGS += -fobjc-arc -include ./zip.h -I . -fvisibility=hidden -Wno-unus
 appinst_FRAMEWORKS = Foundation ImageIO CoreGraphics
 appinst_PRIVATE_FRAMEWORKS = MobileCoreServices
 # appinst_LDFLAGS += $(THEOS)/lib/libzip.a
-appinst_LIBRARIES = z
+appinst_LIBRARIES = z lzma
 appinst_LDFLAGS += -lbz2
 appinst_LDFLAGS += -L./libs
 appinst_LDFLAGS += -lzip
