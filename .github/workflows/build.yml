@@ -37,7 +37,6 @@ jobs:
       run:
         shell: bash
     env:
-      THEOS: ${{ runner.temp }}/theos
       DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
       HOMEBREW_NO_AUTO_UPDATE: '1'
       BUILD_TYPE: ${{ matrix.type }}
@@ -45,6 +44,9 @@ jobs:
       BUILD_MODE: ${{ matrix.mode }}
 
     steps:
+      - name: Set build environment
+        run: echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
+
       - name: Checkout project
         uses: actions/checkout@v4
         with:
