@@ -13,6 +13,7 @@
 | 下载、安装并连接手机 | [快速入门](docs/quickstart.md) |
 | 在 Windows 上编译并下载安装包 | [GitHub Actions 编译说明](docs/github-actions.md) |
 | 接入截图、触摸、应用管理等能力 | [HTTP API 与 WebSocket 参考](docs/api.md) |
+| 开发控制页面并更新安装包内资源 | [控制页面项目说明](ios_control/README.md) |
 | 本地构建、理解代码结构、参与维护 | [开发指南](docs/development.md) |
 | 排查无法连接、黑屏、输入失败等问题 | [常见问题](docs/quickstart.md#常见问题) |
 
@@ -73,6 +74,7 @@ Invoke-WebRequest "$baseUrl/screenshot_original" -OutFile screenshot.png
 ```text
 mks_tweak/
 ├── pccontrol/       # SpringBoard HTTP / WebSocket 服务、截图和输入
+├── ios_control/     # Vue 控制页面源码，构建后同步到 pccontrol/layout
 ├── appdelegate/     # 应用内键盘通知接收与文本操作
 ├── StoreSwitcher2/  # App Store 账号切换界面
 ├── locationfaker/   # CLLocation 坐标替换

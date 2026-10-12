@@ -78,3 +78,7 @@ git push origin master
 | 产物上传提示没有 .deb | 检查前面的 package 是否成功，以及 packages/*.deb 是否生成 |
 
 日志只有在进入构建步骤后才会生成；早期失败可能没有日志产物。CI 成功说明完成打包，设备功能仍需真机验证。
+
+## 控制页面资源
+
+Vue 控制页面源码位于 `ios_control/`，当前流程不会运行 `npm ci` / `npm run build`。构建 `.deb` 时使用的是已经提交的 `pccontrol/layout/usr/lib/mks_dist/`。修改页面后先在本机生成 dist 并同步、提交打包资源，具体步骤见[控制页面项目说明](../ios_control/README.md#构建并更新打包页面)。

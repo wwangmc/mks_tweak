@@ -16,7 +16,9 @@
 | keychain_clear | 直接操作设备钥匙串数据库的命令行工具 |
 | appinst | 命令行 IPA 安装工具，静态链接仓库内的 libzip |
 
-HTTP 服务在 8081 端口监听，静态页面由 `pccontrol/layout/usr/lib/mks_dist/` 提供。这里是已构建的 HTML / CSS / JavaScript 资源，仓库没有配套前端源码或 npm 构建入口。
+HTTP 服务在 8081 端口监听，静态页面由 `pccontrol/layout/usr/lib/mks_dist/` 提供。对应 Vue / Vite 源码位于 `ios_control/`，本地构建输出到 `ios_control/dist/`，再同步到打包目录。启动、联调、交互和同步步骤见[控制页面项目说明](../ios_control/README.md)。
+
+前端是独立构建步骤，不是根目录 Theos Makefile 的子项目。当前 GitHub Actions 不运行 npm 构建；修改前端源码时，需要一并提交更新后的 `pccontrol/layout/usr/lib/mks_dist/` 资源。
 
 ### Web 服务关键文件
 

@@ -8,10 +8,11 @@ MKS 的 SpringBoard 控制服务，提供 HTTP、WebSocket、截图与 HID 输�
 - [完整 HTTP API / WebSocket 参考](../docs/api.md)
 - [模块结构、本地构建与回归检查](../docs/development.md)
 - [GitHub Actions 打包与日志](../docs/github-actions.md)
+- [控制页面源码、联调和资源更新](../ios_control/README.md)
 
 ## 实现概览
 
-`Tweak.xm` 在 SpringBoard 启动时初始化屏幕信息，并启动 8081 服务。`WebServer.xm` 按截图、输入、应用、设备、提示和设置分组注册路由，静态页面位于 `layout/usr/lib/mks_dist/`。
+`Tweak.xm` 在 SpringBoard 启动时初始化屏幕信息，并启动 8081 服务。`WebServer.xm` 按截图、输入、应用、设备、提示和设置分组注册路由，静态页面位于 `layout/usr/lib/mks_dist/`。页面源码位于仓库根目录 `ios_control/`；修改后需单独构建并同步到该 layout 目录，Theos 不会自动构建前端。
 
 `WebServerSupport.m` 集中处理 JSON 对象解析、参数校验、CORS 和响应。`ScreenshotStream.m` 按读取需求异步生成 MJPEG 帧，并在连接关闭后停止截图。`SocketHandler.xm` 接收输入任务，`SysExecutor.xm` 调用设备侧 roothelp。
 
