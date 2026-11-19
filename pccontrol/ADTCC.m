@@ -68,6 +68,6 @@ static void initializeFunctions() {
         TCCAccessCopyInformationForBundle_Ptr = dlsym(handle, "TCCAccessCopyInformationForBundle");
         dlclose(handle);
     }else{
-        printf(@"open error");
+        printf("open error");
     }
 }

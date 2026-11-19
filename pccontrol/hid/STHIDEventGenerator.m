@@ -834,7 +834,8 @@ static void _sendHIDEvent(IOHIDEventRef eventRef, dispatch_queue_t queue) {
     delayBetweenTaps:(NSTimeInterval)delay {
     NSParameterAssert(tapCount > 0);
     NSParameterAssert(touchCount > 0);
-    NSParameterAssert(delay > 0.0);
+    // Zero selects multiTapInterval; tap:/doubleTap: pass zero deliberately.
+    NSParameterAssert(delay >= 0.0);
 
     struct timespec doubleDelay = {0, (long)(multiTapInterval * nanosecondsPerSecond)};
     struct timespec pressDelay = {0, (long)(fingerLiftDelay * nanosecondsPerSecond)};

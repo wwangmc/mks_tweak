@@ -16,8 +16,10 @@ ifeq ($(TYPE), $(ROOTLESS))
     THEOS_PACKAGE_SCHEME = rootless
 else ifeq ($(TYPE), $(ROOTHIDE))
     THEOS_PACKAGE_SCHEME = roothide
-else 
-	TARGET = iphone:clang:16.5:13.0
+else
+    TARGET = iphone:clang:16.5:13.0
+    # Match macOS CI for the iOS 13 deployment target.
+    export ARCHS ?= arm64
 endif
 
 INSTALL_TARGET_PROCESSES = SpringBoard
